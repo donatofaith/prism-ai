@@ -55,8 +55,11 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
 
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans:
+    var(--font-geist-sans);
+
+  --font-mono:
+    var(--font-geist-mono);
 }
 
 * {
@@ -69,7 +72,6 @@ html {
 
 body {
   margin: 0;
-
   min-height: 100vh;
 
   background:
@@ -93,7 +95,8 @@ body {
     Helvetica,
     sans-serif;
 
-  -webkit-font-smoothing: antialiased;
+  -webkit-font-smoothing:
+    antialiased;
 }
 
 a {
@@ -113,7 +116,13 @@ button {
 }
 
 ::selection {
-  background: rgba(70, 95, 255, 0.16);
+  background:
+    rgba(
+      70,
+      95,
+      255,
+      0.16
+    );
 }
 
 ::-webkit-scrollbar {
@@ -127,24 +136,19 @@ button {
 
 ::-webkit-scrollbar-thumb {
   background: #cad2dc;
-
   border: 2px solid transparent;
-
   border-radius: 999px;
-
   background-clip: padding-box;
 }
 
 ::-webkit-scrollbar-thumb:hover {
   background: #98a5b5;
-
   border: 2px solid transparent;
-
   background-clip: padding-box;
 }
 
 /* =========================================================
-   PRISM FOUNDATION
+   LAYOUT
    ========================================================= */
 
 .prism-shell {
@@ -153,16 +157,23 @@ button {
 }
 
 .prism-container {
-  width: min(100%, 1440px);
+  width: min(
+    100%,
+    1440px
+  );
 
   margin: 0 auto;
 
-  padding-inline: 24px;
+  padding-inline:
+    24px;
 }
 
-@media (max-width: 640px) {
+@media (
+  max-width: 640px
+) {
   .prism-container {
-    padding-inline: 16px;
+    padding-inline:
+      16px;
   }
 }
 
@@ -171,30 +182,52 @@ button {
    ========================================================= */
 
 .prism-surface {
-  background: rgba(255, 255, 255, 0.94);
+  background:
+    rgba(
+      255,
+      255,
+      255,
+      0.94
+    );
 
-  border: 1px solid var(--border);
+  border:
+    1px solid
+    var(--border);
 
-  border-radius: 24px;
+  border-radius:
+    24px;
 
-  box-shadow: var(--shadow-sm);
+  box-shadow:
+    var(--shadow-sm);
 
-  backdrop-filter: blur(16px);
+  backdrop-filter:
+    blur(16px);
 }
 
 .prism-surface-soft {
-  background: var(--surface-soft);
+  background:
+    var(
+      --surface-soft
+    );
 
-  border: 1px solid var(--border);
+  border:
+    1px solid
+    var(--border);
 
-  border-radius: 20px;
+  border-radius:
+    20px;
 }
 
 .prism-panel-dark {
   background:
     radial-gradient(
       circle at 80% 0%,
-      rgba(22, 184, 166, 0.15),
+      rgba(
+        22,
+        184,
+        166,
+        0.15
+      ),
       transparent 35%
     ),
     linear-gradient(
@@ -205,40 +238,72 @@ button {
 
   color: white;
 
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  border:
+    1px solid
+    rgba(
+      255,
+      255,
+      255,
+      0.07
+    );
 
-  border-radius: 24px;
+  border-radius:
+    24px;
 
-  box-shadow: var(--shadow-md);
+  box-shadow:
+    var(--shadow-md);
 }
 
 .prism-gradient-panel {
   background:
     radial-gradient(
       circle at 15% 10%,
-      rgba(70, 95, 255, 0.09),
+      rgba(
+        70,
+        95,
+        255,
+        0.09
+      ),
       transparent 34%
     ),
     radial-gradient(
       circle at 90% 80%,
-      rgba(22, 184, 166, 0.1),
+      rgba(
+        22,
+        184,
+        166,
+        0.1
+      ),
       transparent 35%
     ),
     #ffffff;
 
-  border: 1px solid rgba(70, 95, 255, 0.12);
+  border:
+    1px solid
+    rgba(
+      70,
+      95,
+      255,
+      0.12
+    );
 
-  border-radius: 24px;
+  border-radius:
+    24px;
 }
 
 .prism-card {
-  background: var(--surface);
+  background:
+    var(--surface);
 
-  border: 1px solid var(--border);
+  border:
+    1px solid
+    var(--border);
 
-  border-radius: 20px;
+  border-radius:
+    20px;
 
-  box-shadow: var(--shadow-sm);
+  box-shadow:
+    var(--shadow-sm);
 
   transition:
     transform 180ms ease,
@@ -247,11 +312,19 @@ button {
 }
 
 .prism-card:hover {
-  transform: translateY(-2px);
+  transform:
+    translateY(-2px);
 
-  border-color: rgba(70, 95, 255, 0.22);
+  border-color:
+    rgba(
+      70,
+      95,
+      255,
+      0.22
+    );
 
-  box-shadow: var(--shadow-md);
+  box-shadow:
+    var(--shadow-md);
 }
 
 /* =========================================================
@@ -261,7 +334,8 @@ button {
 .prism-button-primary {
   border: 0;
 
-  border-radius: 14px;
+  border-radius:
+    14px;
 
   background:
     linear-gradient(
@@ -274,7 +348,13 @@ button {
   color: white;
 
   box-shadow:
-    0 10px 24px rgba(70, 95, 255, 0.2);
+    0 10px 24px
+    rgba(
+      70,
+      95,
+      255,
+      0.2
+    );
 
   transition:
     transform 160ms ease,
@@ -283,41 +363,72 @@ button {
 }
 
 .prism-button-primary:hover {
-  transform: translateY(-1px);
+  transform:
+    translateY(-1px);
 
   box-shadow:
-    0 14px 30px rgba(70, 95, 255, 0.26);
+    0 14px 30px
+    rgba(
+      70,
+      95,
+      255,
+      0.26
+    );
+}
+
+.prism-button-primary:active {
+  transform:
+    translateY(0)
+    scale(0.985);
 }
 
 .prism-button-primary:disabled {
   opacity: 0.55;
-
   cursor: not-allowed;
-
   transform: none;
 }
 
 .prism-button-secondary {
-  border: 1px solid var(--border);
+  border:
+    1px solid
+    var(--border);
 
-  border-radius: 14px;
+  border-radius:
+    14px;
 
   background: white;
 
-  color: var(--text-primary);
+  color:
+    var(--text-primary);
 
   transition:
     background 160ms ease,
     border-color 160ms ease,
-    transform 160ms ease;
+    transform 160ms ease,
+    box-shadow 160ms ease;
 }
 
 .prism-button-secondary:hover {
-  background: var(--surface-soft);
+  background:
+    var(
+      --surface-soft
+    );
 
-  border-color: var(--border-strong);
+  border-color:
+    var(
+      --border-strong
+    );
 
-  transform: translateY(-1px);
+  transform:
+    translateY(-1px);
+
+  box-shadow:
+    var(--shadow-sm);
+}
+
+.prism-button-secondary:active {
+  transform:
+    scale(0.985);
 }
 
 /* =========================================================
@@ -327,13 +438,17 @@ button {
 .prism-input {
   width: 100%;
 
-  border: 1px solid var(--border);
+  border:
+    1px solid
+    var(--border);
 
-  border-radius: 14px;
+  border-radius:
+    14px;
 
   background: white;
 
-  color: var(--text-primary);
+  color:
+    var(--text-primary);
 
   outline: none;
 
@@ -343,24 +458,41 @@ button {
 }
 
 .prism-input::placeholder {
-  color: var(--text-soft);
+  color:
+    var(--text-soft);
 }
 
 .prism-input:focus {
-  border-color: rgba(70, 95, 255, 0.55);
+  border-color:
+    rgba(
+      70,
+      95,
+      255,
+      0.55
+    );
 
   box-shadow:
-    0 0 0 4px rgba(70, 95, 255, 0.09);
+    0 0 0 4px
+    rgba(
+      70,
+      95,
+      255,
+      0.09
+    );
 }
 
 .prism-select {
-  border: 1px solid var(--border);
+  border:
+    1px solid
+    var(--border);
 
-  border-radius: 14px;
+  border-radius:
+    14px;
 
   background: white;
 
-  color: var(--text-primary);
+  color:
+    var(--text-primary);
 
   outline: none;
 }
@@ -370,57 +502,112 @@ button {
    ========================================================= */
 
 .prism-chip {
-  display: inline-flex;
+  display:
+    inline-flex;
 
-  align-items: center;
+  align-items:
+    center;
 
-  gap: 6px;
+  gap:
+    6px;
 
-  padding: 6px 10px;
+  padding:
+    6px 10px;
 
-  border: 1px solid var(--border);
+  border:
+    1px solid
+    var(--border);
 
-  border-radius: 999px;
+  border-radius:
+    999px;
 
-  background: white;
+  background:
+    white;
 
-  color: var(--text-secondary);
+  color:
+    var(--text-secondary);
 
-  font-size: 12px;
+  font-size:
+    12px;
 
-  line-height: 1;
+  line-height:
+    1;
 }
 
 .prism-chip-primary {
-  border-color: rgba(70, 95, 255, 0.14);
+  border-color:
+    rgba(
+      70,
+      95,
+      255,
+      0.14
+    );
 
-  background: var(--primary-soft);
+  background:
+    var(
+      --primary-soft
+    );
 
-  color: var(--primary-strong);
+  color:
+    var(
+      --primary-strong
+    );
 }
 
 .prism-chip-success {
-  border-color: rgba(22, 184, 166, 0.18);
+  border-color:
+    rgba(
+      22,
+      184,
+      166,
+      0.18
+    );
 
-  background: var(--signal-soft);
+  background:
+    var(
+      --signal-soft
+    );
 
-  color: var(--signal-strong);
+  color:
+    var(
+      --signal-strong
+    );
 }
 
 .prism-chip-warning {
-  border-color: rgba(255, 180, 74, 0.24);
+  border-color:
+    rgba(
+      255,
+      180,
+      74,
+      0.24
+    );
 
-  background: var(--warning-soft);
+  background:
+    var(
+      --warning-soft
+    );
 
-  color: #a35c00;
+  color:
+    #a35c00;
 }
 
 .prism-chip-danger {
-  border-color: rgba(239, 91, 91, 0.18);
+  border-color:
+    rgba(
+      239,
+      91,
+      91,
+      0.18
+    );
 
-  background: var(--danger-soft);
+  background:
+    var(
+      --danger-soft
+    );
 
-  color: #c03e3e;
+  color:
+    #c03e3e;
 }
 
 /* =========================================================
@@ -428,59 +615,84 @@ button {
    ========================================================= */
 
 .prism-eyebrow {
-  color: var(--primary);
+  color:
+    var(--primary);
 
-  font-size: 12px;
+  font-size:
+    12px;
 
-  font-weight: 700;
+  font-weight:
+    700;
 
-  letter-spacing: 0.12em;
+  letter-spacing:
+    0.12em;
 
-  text-transform: uppercase;
+  text-transform:
+    uppercase;
 }
 
 .prism-section-title {
-  color: var(--text-primary);
+  color:
+    var(
+      --text-primary
+    );
 
-  font-size: clamp(
-    28px,
-    4vw,
-    44px
-  );
+  font-size:
+    clamp(
+      28px,
+      4vw,
+      44px
+    );
 
-  font-weight: 700;
+  font-weight:
+    700;
 
-  letter-spacing: -0.035em;
+  letter-spacing:
+    -0.035em;
 
-  line-height: 1.08;
+  line-height:
+    1.08;
 }
 
 .prism-section-copy {
-  color: var(--text-muted);
+  color:
+    var(
+      --text-muted
+    );
 
-  font-size: 15px;
+  font-size:
+    15px;
 
-  line-height: 1.8;
+  line-height:
+    1.8;
 }
 
 /* =========================================================
-   HERO DATA GRID
+   HERO INTELLIGENCE GRID
    ========================================================= */
 
 .prism-hero-grid {
-  position: absolute;
+  position:
+    absolute;
 
   inset: 0;
 
-  overflow: hidden;
+  overflow:
+    hidden;
 
-  pointer-events: none;
+  pointer-events:
+    none;
 
   mask-image:
     linear-gradient(
       to bottom,
       black 0%,
-      rgba(0, 0, 0, 0.75) 55%,
+      rgba(
+        0,
+        0,
+        0,
+        0.78
+      ) 58%,
       transparent 100%
     );
 }
@@ -488,18 +700,32 @@ button {
 .prism-hero-grid::before {
   content: "";
 
-  position: absolute;
+  position:
+    absolute;
 
-  inset: -40%;
+  inset:
+    -40%;
 
   background-image:
     linear-gradient(
-      rgba(70, 95, 255, 0.055) 1px,
+      rgba(
+        70,
+        95,
+        255,
+        0.055
+      )
+        1px,
       transparent 1px
     ),
     linear-gradient(
       90deg,
-      rgba(70, 95, 255, 0.055) 1px,
+      rgba(
+        70,
+        95,
+        255,
+        0.055
+      )
+        1px,
       transparent 1px
     );
 
@@ -511,11 +737,13 @@ button {
     rotateX(62deg)
     translateY(-8%);
 
-  transform-origin: center top;
+  transform-origin:
+    center top;
 
   animation:
     prism-grid-drift
-    18s linear infinite;
+    18s linear
+    infinite;
 }
 
 @keyframes prism-grid-drift {
@@ -533,136 +761,403 @@ button {
 }
 
 /* =========================================================
+   AMBIENT HERO SCANNER
+
+   Gives PRISM the investigation-system feel even
+   while the user is not actively running a scan.
+   ========================================================= */
+
+#scan::before {
+  content: "";
+
+  position:
+    absolute;
+
+  z-index: 1;
+
+  left: 0;
+  right: 0;
+
+  top:
+    -110px;
+
+  height:
+    110px;
+
+  pointer-events:
+    none;
+
+  opacity:
+    0;
+
+  background:
+    linear-gradient(
+      to bottom,
+      transparent 0%,
+      rgba(
+        70,
+        95,
+        255,
+        0.018
+      )
+        24%,
+      rgba(
+        22,
+        184,
+        166,
+        0.055
+      )
+        52%,
+      rgba(
+        22,
+        184,
+        166,
+        0.13
+      )
+        54%,
+      rgba(
+        70,
+        95,
+        255,
+        0.025
+      )
+        58%,
+      transparent 100%
+    );
+
+  filter:
+    drop-shadow(
+      0 8px 10px
+      rgba(
+        22,
+        184,
+        166,
+        0.05
+      )
+    );
+
+  animation:
+    prism-ambient-scan
+    10s ease-in-out
+    infinite;
+}
+
+@keyframes prism-ambient-scan {
+  0% {
+    top:
+      -110px;
+
+    opacity:
+      0;
+  }
+
+  8% {
+    opacity:
+      0.85;
+  }
+
+  72% {
+    opacity:
+      0.5;
+  }
+
+  88% {
+    opacity:
+      0.15;
+  }
+
+  100% {
+    top:
+      calc(
+        100% +
+        70px
+      );
+
+    opacity:
+      0;
+  }
+}
+
+/* small secondary scanning trace */
+
+#scan::after {
+  content: "";
+
+  position:
+    absolute;
+
+  z-index: 1;
+
+  left:
+    6%;
+
+  right:
+    6%;
+
+  top:
+    24%;
+
+  height:
+    1px;
+
+  pointer-events:
+    none;
+
+  opacity:
+    0.55;
+
+  background:
+    linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(
+        70,
+        95,
+        255,
+        0.08
+      )
+        22%,
+      rgba(
+        22,
+        184,
+        166,
+        0.65
+      )
+        50%,
+      rgba(
+        70,
+        95,
+        255,
+        0.08
+      )
+        78%,
+      transparent 100%
+    );
+
+  transform:
+    scaleX(0.15);
+
+  transform-origin:
+    center;
+
+  animation:
+    prism-scan-trace
+    7.5s ease-in-out
+    infinite;
+}
+
+@keyframes prism-scan-trace {
+  0%,
+  100% {
+    transform:
+      scaleX(0.12);
+
+    opacity:
+      0;
+  }
+
+  15% {
+    opacity:
+      0.45;
+  }
+
+  48% {
+    transform:
+      scaleX(1);
+
+    opacity:
+      0.7;
+  }
+
+  72% {
+    opacity:
+      0.25;
+  }
+}
+
+/* =========================================================
    MOVING DATA LINES
    ========================================================= */
 
 .prism-data-line {
-  position: absolute;
+  position:
+    absolute;
 
-  height: 1px;
+  height:
+    1px;
 
-  overflow: hidden;
+  overflow:
+    hidden;
 
-  border-radius: 999px;
+  border-radius:
+    999px;
 
   background:
     linear-gradient(
       90deg,
       transparent,
-      rgba(70, 95, 255, 0.08),
+      rgba(
+        70,
+        95,
+        255,
+        0.08
+      ),
       transparent
     );
 
-  pointer-events: none;
+  pointer-events:
+    none;
 }
 
 .prism-data-line::after {
   content: "";
 
-  position: absolute;
+  position:
+    absolute;
 
   top: 0;
-
   left: -30%;
 
-  width: 25%;
+  width:
+    25%;
 
-  height: 100%;
+  height:
+    100%;
 
   background:
     linear-gradient(
       90deg,
       transparent,
-      rgba(22, 184, 166, 0.9),
+      rgba(
+        22,
+        184,
+        166,
+        0.9
+      ),
       transparent
     );
 
   filter:
     drop-shadow(
       0 0 4px
-      rgba(22, 184, 166, 0.35)
+      rgba(
+        22,
+        184,
+        166,
+        0.35
+      )
     );
 
   animation:
     prism-line-travel
-    var(--line-speed, 6s)
+    var(
+      --line-speed,
+      6s
+    )
     linear
     infinite;
 
   animation-delay:
-    var(--line-delay, 0s);
+    var(
+      --line-delay,
+      0s
+    );
 }
 
 @keyframes prism-line-travel {
   from {
-    left: -30%;
+    left:
+      -30%;
   }
 
   to {
-    left: 110%;
+    left:
+      110%;
   }
 }
 
-/* =========================================================
-   VERTICAL DATA STREAM
-   ========================================================= */
-
 .prism-data-line-vertical {
-  position: absolute;
+  position:
+    absolute;
 
-  width: 1px;
+  width:
+    1px;
 
-  overflow: hidden;
+  overflow:
+    hidden;
 
   background:
     linear-gradient(
       180deg,
       transparent,
-      rgba(22, 184, 166, 0.08),
+      rgba(
+        22,
+        184,
+        166,
+        0.08
+      ),
       transparent
     );
 
-  pointer-events: none;
+  pointer-events:
+    none;
 }
 
 .prism-data-line-vertical::after {
   content: "";
 
-  position: absolute;
+  position:
+    absolute;
 
-  top: -25%;
+  top:
+    -25%;
 
   left: 0;
 
-  width: 100%;
+  width:
+    100%;
 
-  height: 22%;
+  height:
+    22%;
 
   background:
     linear-gradient(
       180deg,
       transparent,
-      rgba(70, 95, 255, 0.85),
+      rgba(
+        70,
+        95,
+        255,
+        0.85
+      ),
       transparent
     );
 
   animation:
     prism-line-travel-vertical
-    var(--line-speed, 7s)
+    var(
+      --line-speed,
+      7s
+    )
     linear
     infinite;
 
   animation-delay:
-    var(--line-delay, 0s);
+    var(
+      --line-delay,
+      0s
+    );
 }
 
 @keyframes prism-line-travel-vertical {
   from {
-    top: -25%;
+    top:
+      -25%;
   }
 
   to {
-    top: 115%;
+    top:
+      115%;
   }
 }
 
@@ -671,27 +1166,42 @@ button {
    ========================================================= */
 
 .prism-orb {
-  position: absolute;
+  position:
+    absolute;
 
-  border-radius: 999px;
+  border-radius:
+    999px;
 
-  pointer-events: none;
+  pointer-events:
+    none;
 
-  filter: blur(70px);
+  filter:
+    blur(70px);
 
   animation:
     prism-orb-float
-    12s ease-in-out infinite alternate;
+    12s ease-in-out
+    infinite alternate;
 }
 
 .prism-orb-primary {
   background:
-    rgba(70, 95, 255, 0.13);
+    rgba(
+      70,
+      95,
+      255,
+      0.13
+    );
 }
 
 .prism-orb-signal {
   background:
-    rgba(22, 184, 166, 0.13);
+    rgba(
+      22,
+      184,
+      166,
+      0.13
+    );
 
   animation-delay:
     -4s;
@@ -720,114 +1230,251 @@ button {
 }
 
 /* =========================================================
-   SCANNER
+   ACTIVE INVESTIGATION SCANNER
+
+   This class is already rendered inside the console
+   while loading / perspective synthesis is active.
    ========================================================= */
 
 .prism-scanner {
-  position: absolute;
+  position:
+    absolute;
 
-  inset-inline: 0;
+  z-index:
+    2;
 
-  top: -10%;
+  inset-inline:
+    0;
 
-  height: 55px;
+  top:
+    -14%;
 
-  opacity: 0;
+  height:
+    82px;
+
+  opacity:
+    0;
+
+  pointer-events:
+    none;
 
   background:
     linear-gradient(
       to bottom,
-      transparent,
-      rgba(22, 184, 166, 0.055),
-      rgba(22, 184, 166, 0.16),
-      transparent
+      transparent 0%,
+      rgba(
+        70,
+        95,
+        255,
+        0.025
+      )
+        28%,
+      rgba(
+        22,
+        184,
+        166,
+        0.09
+      )
+        47%,
+      rgba(
+        22,
+        184,
+        166,
+        0.32
+      )
+        50%,
+      rgba(
+        70,
+        95,
+        255,
+        0.06
+      )
+        54%,
+      transparent 100%
     );
 
-  pointer-events: none;
+  filter:
+    drop-shadow(
+      0 0 9px
+      rgba(
+        22,
+        184,
+        166,
+        0.15
+      )
+    );
 
   animation:
     prism-scanner-sweep
-    7s ease-in-out infinite;
+    3.8s
+    cubic-bezier(
+      0.45,
+      0,
+      0.2,
+      1
+    )
+    infinite;
+}
+
+.prism-scanner::after {
+  content: "";
+
+  position:
+    absolute;
+
+  left:
+    6%;
+
+  right:
+    6%;
+
+  top:
+    50%;
+
+  height:
+    1px;
+
+  background:
+    linear-gradient(
+      90deg,
+      transparent,
+      rgba(
+        22,
+        184,
+        166,
+        0.18
+      ),
+      rgba(
+        22,
+        184,
+        166,
+        0.9
+      ),
+      rgba(
+        70,
+        95,
+        255,
+        0.45
+      ),
+      transparent
+    );
+
+  box-shadow:
+    0 0 10px
+    rgba(
+      22,
+      184,
+      166,
+      0.28
+    );
 }
 
 @keyframes prism-scanner-sweep {
   0% {
-    top: -10%;
+    top:
+      -14%;
 
-    opacity: 0;
+    opacity:
+      0;
   }
 
-  15% {
-    opacity: 1;
+  10% {
+    opacity:
+      1;
   }
 
-  70% {
-    opacity: 0.65;
+  78% {
+    opacity:
+      0.8;
   }
 
   100% {
-    top: 110%;
+    top:
+      108%;
 
-    opacity: 0;
+    opacity:
+      0;
   }
 }
 
 /* =========================================================
-   PULSE
+   LIVE STATUS
    ========================================================= */
 
 .prism-live-dot {
-  position: relative;
+  position:
+    relative;
 
-  display: inline-flex;
+  display:
+    inline-flex;
 
-  width: 9px;
+  width:
+    9px;
 
-  height: 9px;
+  height:
+    9px;
 
-  border-radius: 999px;
+  border-radius:
+    999px;
 
-  background: var(--signal);
+  background:
+    var(--signal);
 }
 
 .prism-live-dot::before {
   content: "";
 
-  position: absolute;
+  position:
+    absolute;
 
-  inset: -5px;
+  inset:
+    -5px;
 
-  border-radius: inherit;
+  border-radius:
+    inherit;
 
-  border: 1px solid rgba(22, 184, 166, 0.35);
+  border:
+    1px solid
+    rgba(
+      22,
+      184,
+      166,
+      0.35
+    );
 
   animation:
     prism-pulse
-    2.2s ease-out infinite;
+    2.2s ease-out
+    infinite;
 }
 
 @keyframes prism-pulse {
   0% {
-    transform: scale(0.65);
+    transform:
+      scale(0.65);
 
-    opacity: 0.8;
+    opacity:
+      0.8;
   }
 
   100% {
-    transform: scale(1.8);
+    transform:
+      scale(1.8);
 
-    opacity: 0;
+    opacity:
+      0;
   }
 }
 
 /* =========================================================
-   REVEAL MOTION
+   ENTRANCE MOTION
    ========================================================= */
 
 .prism-reveal {
   animation:
     prism-reveal
-    620ms cubic-bezier(
+    620ms
+    cubic-bezier(
       0.16,
       1,
       0.3,
@@ -837,15 +1484,18 @@ button {
 }
 
 .prism-reveal-delay-1 {
-  animation-delay: 80ms;
+  animation-delay:
+    80ms;
 }
 
 .prism-reveal-delay-2 {
-  animation-delay: 160ms;
+  animation-delay:
+    160ms;
 }
 
 .prism-reveal-delay-3 {
-  animation-delay: 240ms;
+  animation-delay:
+    240ms;
 }
 
 @keyframes prism-reveal {
@@ -853,14 +1503,53 @@ button {
     opacity: 0;
 
     transform:
-      translateY(14px);
+      translateY(
+        14px
+      );
   }
 
   to {
     opacity: 1;
 
     transform:
-      translateY(0);
+      translateY(
+        0
+      );
+  }
+}
+
+/* =========================================================
+   RESPONSIVE MOTION TUNING
+   ========================================================= */
+
+@media (
+  max-width: 640px
+) {
+  #scan::before {
+    height:
+      75px;
+
+    animation-duration:
+      11s;
+  }
+
+  #scan::after {
+    left:
+      10%;
+
+    right:
+      10%;
+
+    opacity:
+      0.35;
+  }
+
+  .prism-orb {
+    filter:
+      blur(85px);
+
+    opacity:
+      0.7;
   }
 }
 
@@ -870,7 +1559,7 @@ button {
 
 @media (
   prefers-reduced-motion:
-  reduce
+    reduce
 ) {
   html {
     scroll-behavior:
@@ -888,5 +1577,11 @@ button {
 
     transition-duration:
       0.01ms !important;
+  }
+
+  #scan::before,
+  #scan::after {
+    display:
+      none;
   }
 }
