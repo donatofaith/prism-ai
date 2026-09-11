@@ -1,0 +1,268 @@
+html {
+  color-scheme: light;
+}
+
+html.dark {
+  color-scheme: dark;
+
+  --background: #07111f;
+  --foreground: #f4f7fb;
+  --surface: #0b1727;
+  --surface-soft: #0e1b2c;
+  --surface-muted: #122238;
+  --border: #20324a;
+  --border-strong: #314762;
+  --text-primary: #f4f7fb;
+  --text-secondary: #c6d0dc;
+  --text-muted: #93a3b7;
+  --text-soft: #72839a;
+  --primary: #7287ff;
+  --primary-strong: #9aa7ff;
+  --primary-soft: #172349;
+  --signal: #3bd0bd;
+  --signal-strong: #7ce2d6;
+  --signal-soft: #0f302f;
+  --warning-soft: #312711;
+  --danger-soft: #321a20;
+  --ink: #07111f;
+  --ink-soft: #0c1a2b;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 16px 38px rgba(0, 0, 0, 0.34), 0 4px 14px rgba(0, 0, 0, 0.24);
+  --shadow-lg: 0 30px 78px rgba(0, 0, 0, 0.42), 0 10px 28px rgba(0, 0, 0, 0.26);
+}
+
+html.dark body {
+  background:
+    radial-gradient(circle at 10% 6%, rgba(88, 107, 255, 0.16), transparent 31%),
+    radial-gradient(circle at 91% 10%, rgba(22, 184, 166, 0.12), transparent 27%),
+    #07111f;
+  color: var(--foreground);
+}
+
+html.dark .prism-shell {
+  background: transparent;
+  color: var(--text-primary);
+}
+
+html.dark .prism-surface {
+  background: rgba(11, 23, 39, 0.94);
+  border-color: var(--border);
+  box-shadow: var(--shadow-sm);
+}
+
+html.dark .prism-surface-soft,
+html.dark .prism-card {
+  background: var(--surface-soft);
+  border-color: var(--border);
+}
+
+html.dark .prism-gradient-panel {
+  background:
+    radial-gradient(circle at 15% 10%, rgba(114, 135, 255, 0.14), transparent 34%),
+    radial-gradient(circle at 90% 80%, rgba(59, 208, 189, 0.1), transparent 35%),
+    #0b1727;
+  border-color: rgba(114, 135, 255, 0.16);
+}
+
+html.dark .prism-button-secondary,
+html.dark .prism-input,
+html.dark .prism-select,
+html.dark .prism-chip {
+  background: #0d1a2b;
+  color: var(--text-primary);
+  border-color: var(--border);
+}
+
+html.dark .prism-button-secondary:hover {
+  background: #122238;
+  border-color: var(--border-strong);
+}
+
+html.dark .prism-input::placeholder {
+  color: #72839a;
+}
+
+html.dark select option {
+  background: #0b1727;
+  color: #f4f7fb;
+}
+
+html.dark .prism-chip-primary {
+  background: #172349;
+  border-color: rgba(114, 135, 255, 0.24);
+  color: #b6c0ff;
+}
+
+html.dark .prism-chip-success {
+  background: #0f302f;
+  border-color: rgba(59, 208, 189, 0.24);
+  color: #7ce2d6;
+}
+
+html.dark .prism-chip-warning {
+  background: #312711;
+  border-color: rgba(255, 180, 74, 0.24);
+  color: #ffc970;
+}
+
+html.dark .prism-chip-danger {
+  background: #321a20;
+  border-color: rgba(239, 91, 91, 0.25);
+  color: #ff8f8f;
+}
+
+html.dark [class~="bg-white"],
+html.dark [class*="bg-white/"],
+html.dark [class~="bg-[#F9FBFC]"],
+html.dark [class~="bg-[#FAFBFC]"],
+html.dark [class~="bg-[#F4F6F8]"],
+html.dark [class~="bg-[#F1F5F7]"] {
+  background-color: #0b1727 !important;
+}
+
+html.dark [class~="bg-[#EEF2F5]"],
+html.dark [class~="bg-[#EEF1FF]"] {
+  background-color: #172349 !important;
+}
+
+html.dark [class~="bg-[#E8F9F6]"] {
+  background-color: #0f302f !important;
+}
+
+html.dark [class~="bg-[#FFF1F1]"] {
+  background-color: #321a20 !important;
+}
+
+html.dark [class*="text-[#0D1726]"],
+html.dark [class*="text-[#405064]"] {
+  color: #f4f7fb !important;
+}
+
+html.dark [class*="text-[#69788A]"] {
+  color: #a5b3c5 !important;
+}
+
+html.dark [class*="text-[#98A5B5]"] {
+  color: #7f90a5 !important;
+}
+
+html.dark [class*="border-[#E3E8EE]"],
+html.dark [class*="border-[#E7EBF0]"],
+html.dark [class*="border-[#EEF2F5]"],
+html.dark [class*="border-[#CFD7E1]"],
+html.dark [class*="border-[#DDE4E9]"],
+html.dark [class*="border-[#DCE3E9]"] {
+  border-color: #20324a !important;
+}
+
+html.dark [class*="hover:bg-[#FAFBFC]"]:hover,
+html.dark [class*="hover:bg-[#F4F6F8]"]:hover {
+  background-color: #101f33 !important;
+}
+
+html.dark [class*="shadow-"] {
+  --tw-shadow-color: rgba(0, 0, 0, 0.35);
+}
+
+html.dark #perspective,
+html.dark #wallet,
+html.dark footer,
+html.dark header {
+  background-color: rgba(7, 17, 31, 0.94) !important;
+  border-color: #20324a !important;
+}
+
+html.dark header {
+  backdrop-filter: blur(18px);
+}
+
+html.dark .prism-hero-grid::before {
+  background-image:
+    linear-gradient(rgba(114, 135, 255, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(114, 135, 255, 0.08) 1px, transparent 1px);
+}
+
+html.dark ::-webkit-scrollbar-thumb {
+  background: #314762;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.prism-theme-toggle {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 80;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 44px;
+  padding: 8px 12px 8px 9px;
+  border: 1px solid rgba(207, 215, 225, 0.95);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #0d1726;
+  box-shadow: 0 14px 34px rgba(13, 23, 38, 0.14);
+  backdrop-filter: blur(16px);
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+}
+
+.prism-theme-toggle:hover {
+  transform: translateY(-2px);
+  border-color: #bfc8ff;
+  box-shadow: 0 18px 40px rgba(13, 23, 38, 0.18);
+}
+
+.prism-theme-toggle:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.prism-theme-toggle__icon {
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #eef1ff;
+  color: #465fff;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.prism-theme-toggle__label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+html.dark .prism-theme-toggle {
+  background: rgba(11, 23, 39, 0.94);
+  color: #f4f7fb;
+  border-color: #2a3e58;
+  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.36);
+}
+
+html.dark .prism-theme-toggle__icon {
+  background: #172349;
+  color: #c5ccff;
+}
+
+@media (max-width: 640px) {
+  .prism-theme-toggle {
+    right: 14px;
+    bottom: 14px;
+    min-height: 42px;
+    padding-right: 10px;
+  }
+
+  .prism-theme-toggle__label {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .prism-theme-toggle {
+    transition: none;
+  }
+}
