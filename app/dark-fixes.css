@@ -1,0 +1,262 @@
+/* =========================================================
+   PRISM DARK MODE CONTRAST / SURFACE FIXES
+   Loaded after theme.css so it can safely correct hard-coded
+   Tailwind utility colors used across older UI components.
+   ========================================================= */
+
+html.dark {
+  --dark-page: #07111f;
+  --dark-surface: #0b1727;
+  --dark-surface-2: #0e1b2c;
+  --dark-surface-3: #122238;
+  --dark-border: #20324a;
+  --dark-border-strong: #314762;
+  --dark-text: #f4f7fb;
+  --dark-text-2: #c6d0dc;
+  --dark-text-3: #aebed0;
+  --dark-text-4: #8799af;
+}
+
+/* ---------------------------------------------------------
+   LIGHT / WHITE SURFACES THAT MUST BECOME DARK
+   --------------------------------------------------------- */
+
+html.dark [class~="bg-white"],
+html.dark [class*="bg-white/"],
+html.dark [class~="bg-[#F9FBFC]"],
+html.dark [class~="bg-[#FAFBFC]"],
+html.dark [class~="bg-[#F7F9FC]"],
+html.dark [class~="bg-[#F4F6F8]"],
+html.dark [class~="bg-[#F1F5F7]"],
+html.dark [class~="bg-[#F7F9FF]"],
+html.dark [class~="bg-[#F0FAF8]"] {
+  background-color: var(--dark-surface) !important;
+}
+
+/* Gradient cards were still visually white while their text had already
+   switched to dark-mode colors. Flatten only the light-gradient cards. */
+html.dark [class*="from-[#F7F9FF]"],
+html.dark [class*="from-[#F9FBFC]"],
+html.dark [class*="from-white"],
+html.dark [class*="via-white"],
+html.dark [class*="to-[#F0FAF8]"],
+html.dark [class*="to-white"] {
+  background-image: none !important;
+  background-color: var(--dark-surface) !important;
+}
+
+/* Keep soft cards visually separated from the page background. */
+html.dark [class~="bg-[#EEF2F5]"],
+html.dark [class~="bg-[#EEF1FF]"] {
+  background-color: #172349 !important;
+}
+
+html.dark [class~="bg-[#E8F9F6]"] {
+  background-color: #0f302f !important;
+}
+
+html.dark [class~="bg-[#FFF1F1]"] {
+  background-color: #321a20 !important;
+}
+
+html.dark [class~="bg-[#FFF7E8]"] {
+  background-color: #312711 !important;
+}
+
+/* ---------------------------------------------------------
+   TEXT CONTRAST
+   --------------------------------------------------------- */
+
+html.dark [class*="text-[#0D1726]"],
+html.dark [class*="text-[#18263A]"],
+html.dark [class*="text-[#405064]"] {
+  color: var(--dark-text) !important;
+}
+
+html.dark [class*="text-[#69788A]"] {
+  color: var(--dark-text-3) !important;
+}
+
+html.dark [class*="text-[#98A5B5]"] {
+  color: var(--dark-text-4) !important;
+}
+
+/* Prevent very faint white alpha text from becoming unreadable on dark cards. */
+html.dark [class*="text-white/35"],
+html.dark [class*="text-white/40"],
+html.dark [class*="text-white/45"] {
+  color: rgba(244, 247, 251, 0.62) !important;
+}
+
+html.dark [class*="text-white/70"],
+html.dark [class*="text-white/80"],
+html.dark [class*="text-white/90"] {
+  color: rgba(244, 247, 251, 0.9) !important;
+}
+
+/* ---------------------------------------------------------
+   BORDERS / DIVIDERS
+   --------------------------------------------------------- */
+
+html.dark [class*="border-[#E3E8EE]"],
+html.dark [class*="border-[#E7EBF0]"],
+html.dark [class*="border-[#EEF2F5]"],
+html.dark [class*="border-[#CFD7E1]"],
+html.dark [class*="border-[#DDE4E9]"],
+html.dark [class*="border-[#DCE3E9]"],
+html.dark [class*="border-[#CDD4FF]"] {
+  border-color: var(--dark-border) !important;
+}
+
+html.dark [class*="divide-[#EEF2F5]"] > :not([hidden]) ~ :not([hidden]),
+html.dark [class*="divide-[#E3E8EE]"] > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--dark-border) !important;
+}
+
+/* ---------------------------------------------------------
+   INPUTS / CONTROLS
+   --------------------------------------------------------- */
+
+html.dark input,
+html.dark select,
+html.dark textarea {
+  caret-color: #9aa7ff;
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: #7f90a5 !important;
+}
+
+html.dark select,
+html.dark select option {
+  background-color: var(--dark-surface) !important;
+  color: var(--dark-text) !important;
+}
+
+/* ---------------------------------------------------------
+   PERSPECTIVE
+   The first screenshot showed a white Perspective card with
+   near-white text. Make every Perspective panel a true dark surface.
+   --------------------------------------------------------- */
+
+html.dark #perspective .prism-gradient-panel,
+html.dark #perspective [class*="bg-gradient-to-br"],
+html.dark #perspective [class*="via-white"] {
+  background-image: none !important;
+  background-color: var(--dark-surface) !important;
+  border-color: var(--dark-border) !important;
+}
+
+html.dark #perspective h1,
+html.dark #perspective h2,
+html.dark #perspective h3,
+html.dark #perspective h4,
+html.dark #perspective strong {
+  color: var(--dark-text) !important;
+}
+
+html.dark #perspective p {
+  color: var(--dark-text-3);
+}
+
+html.dark #perspective [class*="uppercase"] {
+  color: var(--dark-text-2) !important;
+}
+
+/* Preserve semantic status chips inside Perspective. */
+html.dark #perspective .prism-chip-primary {
+  color: #b6c0ff !important;
+}
+
+html.dark #perspective .prism-chip-success {
+  color: #7ce2d6 !important;
+}
+
+html.dark #perspective .prism-chip-warning {
+  color: #ffc970 !important;
+}
+
+/* ---------------------------------------------------------
+   MARKET CHART
+   lightweight-charts draws its own white canvas. Since the current
+   chart instance is created with a light canvas, remap only this
+   canvas in dark mode so the rest of the site remains untouched.
+   hue-rotate after inversion keeps red/green signal hues recognizable.
+   --------------------------------------------------------- */
+
+html.dark #market-investigation canvas {
+  filter: invert(0.9) hue-rotate(180deg) brightness(0.88) contrast(0.95);
+}
+
+html.dark #market-investigation .prism-surface {
+  background: var(--dark-surface) !important;
+}
+
+/* ---------------------------------------------------------
+   PROJECT ACCOUNT / EMPTY STATES / CONTINUE BUTTON
+   --------------------------------------------------------- */
+
+html.dark #market-investigation [class*="border-dashed"],
+html.dark #wallet [class*="border-dashed"],
+html.dark #watchlist [class*="border-dashed"] {
+  background-color: var(--dark-surface-2) !important;
+  border-color: var(--dark-border-strong) !important;
+}
+
+html.dark a[class*="rounded-full"][class*="border"],
+html.dark button[class*="rounded-full"][class*="border"] {
+  border-color: var(--dark-border-strong) !important;
+}
+
+html.dark a[class*="rounded-full"][class*="bg-white"],
+html.dark button[class*="rounded-full"][class*="bg-white"] {
+  background-color: var(--dark-surface) !important;
+  color: var(--dark-text-2) !important;
+}
+
+/* ---------------------------------------------------------
+   WATCHLIST + REPLAY LEGACY LIGHT CARDS
+   --------------------------------------------------------- */
+
+html.dark #watchlist [class*="bg-[#F9FBFC]"],
+html.dark #watchlist [class*="bg-white"],
+html.dark #replay [class*="bg-[#F9FBFC]"],
+html.dark #replay [class*="bg-white"] {
+  background-color: var(--dark-surface) !important;
+}
+
+html.dark #watchlist [class*="text-[#0D1726]"],
+html.dark #replay [class*="text-[#0D1726]"] {
+  color: var(--dark-text) !important;
+}
+
+html.dark #watchlist [class*="text-[#69788A]"],
+html.dark #replay [class*="text-[#69788A]"] {
+  color: var(--dark-text-3) !important;
+}
+
+/* ---------------------------------------------------------
+   HOVER STATES
+   --------------------------------------------------------- */
+
+html.dark [class*="hover:bg-[#FAFBFC]"]:hover,
+html.dark [class*="hover:bg-[#F4F6F8]"]:hover,
+html.dark [class*="hover:bg-white"]:hover {
+  background-color: #101f33 !important;
+}
+
+/* ---------------------------------------------------------
+   MOBILE TUNING
+   --------------------------------------------------------- */
+
+@media (max-width: 640px) {
+  html.dark #perspective [class*="rounded-[24px]"],
+  html.dark #market-investigation [class*="rounded-[24px]"] {
+    box-shadow: 0 16px 38px rgba(0, 0, 0, 0.2);
+  }
+
+  html.dark .prism-theme-toggle {
+    border-color: var(--dark-border-strong);
+  }
+}
