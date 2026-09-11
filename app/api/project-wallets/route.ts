@@ -60,16 +60,32 @@ export async function GET(request: NextRequest) {
     const aliasMap: Record<string, string> = {
       ens: "ENS DAO",
       "ethereum name service": "ENS DAO",
+
       aave: "Aave DAO",
       "aave dao": "Aave DAO",
+
       uni: "Uniswap DAO",
       uniswap: "Uniswap DAO",
+      "uniswap dao": "Uniswap DAO",
+
       arb: "Arbitrum DAO",
       arbitrum: "Arbitrum DAO",
+      "arbitrum dao": "Arbitrum DAO",
+
       sol: "Solana",
       solana: "Solana",
-      op: "Optimism",
-      optimism: "Optimism",
+
+      op: "Optimism Collective",
+      optimism: "Optimism Collective",
+      "optimism collective": "Optimism Collective",
+
+      ldo: "Lido DAO",
+      lido: "Lido DAO",
+      "lido dao": "Lido DAO",
+
+      comp: "Compound",
+      compound: "Compound",
+      "compound finance": "Compound",
     };
 
     const resolvedProject = aliasMap[normalized] ?? project;
