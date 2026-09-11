@@ -8,13 +8,6 @@ export type SupportedChain =
   | "avalanche"
   | "solana";
 
-/*
-  Broader account classification.
-
-  This lets PRISM describe addresses
-  accurately instead of assuming every
-  project-controlled address is a wallet.
-*/
 export type ProjectAccountType =
   | "treasury"
   | "governance"
@@ -24,11 +17,6 @@ export type ProjectAccountType =
   | "investor"
   | "project";
 
-/*
-  Kept temporarily so existing API/UI
-  code does not break while we migrate
-  from "wallets" to "project accounts".
-*/
 export type ProjectWalletType =
   | "project"
   | "treasury"
@@ -50,7 +38,16 @@ export type ProjectWalletRecord = {
   explanation: string;
 };
 
+/*
+  PRISM only stores project-linked accounts when there is a public,
+  reviewable attribution source. The registry is deliberately curated:
+  if an address cannot be supported by reliable public evidence, PRISM
+  should leave it unattributed rather than guess.
+*/
 const PROJECT_WALLETS: ProjectWalletRecord[] = [
+  /* =======================================================
+     AAVE
+     ======================================================= */
   {
     address: "0x464C71f6c2F760DdA6093dCB91C24c39e5d6e18c",
     project: "Aave DAO",
@@ -66,6 +63,10 @@ const PROJECT_WALLETS: ProjectWalletRecord[] = [
     explanation:
       "Aave governance documentation publicly identifies this exact address as the Aave DAO Ethereum Treasury.",
   },
+
+  /* =======================================================
+     ENS
+     ======================================================= */
   {
     address: "0xFe89cc7aBB2C4183683ab71653C4cdc9B02D44b7",
     project: "ENS DAO",
@@ -141,6 +142,10 @@ const PROJECT_WALLETS: ProjectWalletRecord[] = [
     explanation:
       "ENS governance documentation identifies this address as the ENS Public Goods working-group multisig.",
   },
+
+  /* =======================================================
+     UNISWAP
+     ======================================================= */
   {
     address: "0x1a9C8182C09F50C8318d769245beA52c32BE35BC",
     project: "Uniswap DAO",
@@ -171,6 +176,10 @@ const PROJECT_WALLETS: ProjectWalletRecord[] = [
     explanation:
       "Uniswap governance documentation identifies this address as an Arbitrum-side governance address associated with Uniswap's cross-chain governance system.",
   },
+
+  /* =======================================================
+     ARBITRUM
+     ======================================================= */
   {
     address: "0xf3fc178157fb3c87548baa86f9d24ba38e649b58",
     project: "Arbitrum DAO",
@@ -186,6 +195,10 @@ const PROJECT_WALLETS: ProjectWalletRecord[] = [
     explanation:
       "Arbitrum governance material identifies this address as an Arbitrum DAO treasury destination.",
   },
+
+  /* =======================================================
+     SOLANA
+     ======================================================= */
   {
     address: "govYkyQ3ePtGULAtY6V75qjWE8UH4vCUVQ1W4HdCAZU",
     project: "Solana",
@@ -200,6 +213,158 @@ const PROJECT_WALLETS: ProjectWalletRecord[] = [
     sourceUrl: "https://docs.governance.solana.com/",
     explanation:
       "Solana governance documentation identifies this address as an official governance program account. It is a program account, not a treasury wallet.",
+  },
+
+  /* =======================================================
+     OPTIMISM
+     Official Optimism documentation publishes these addresses.
+     These are on OP Mainnet.
+     ======================================================= */
+  {
+    address: "0x2A82Ae142b2e62Cb7D10b55E323ACB1Cab663a26",
+    project: "Optimism Collective",
+    symbol: "OP",
+    chain: "optimism",
+    label: "OP Foundation Allocated Treasury",
+    accountType: "treasury",
+    walletType: "treasury",
+    isWallet: true,
+    confidence: "verified",
+    source: "Optimism Documentation",
+    sourceUrl: "https://docs.optimism.io/governance/capital-allocation",
+    explanation:
+      "Optimism documentation identifies this address as the treasury holding the Foundation-allocated OP budget that requires governance approval for access.",
+  },
+  {
+    address: "0x2501c477D0A35545a387Aa4A3EEe4292A9a8B3F0",
+    project: "Optimism Collective",
+    symbol: "OP",
+    chain: "optimism",
+    label: "OP Foundation Approved Treasury",
+    accountType: "treasury",
+    walletType: "treasury",
+    isWallet: true,
+    confidence: "verified",
+    source: "Optimism Documentation",
+    sourceUrl: "https://docs.optimism.io/governance/capital-allocation",
+    explanation:
+      "Optimism documentation identifies this as the Foundation treasury used for budget already approved through the token allocation process.",
+  },
+  {
+    address: "0x19793c7824Be70ec58BB673CA42D2779d12581BE",
+    project: "Optimism Collective",
+    symbol: "OP",
+    chain: "optimism",
+    label: "OP Foundation Grants Wallet",
+    accountType: "project",
+    walletType: "project",
+    isWallet: true,
+    confidence: "verified",
+    source: "Optimism Documentation",
+    sourceUrl: "https://docs.optimism.io/governance/capital-allocation",
+    explanation:
+      "Optimism documentation identifies this Foundation wallet as a wallet used to make private OP grants.",
+  },
+  {
+    address: "0xE4553b743E74dA3424Ac51f8C1E586fd43aE226F",
+    project: "Optimism Collective",
+    symbol: "OP",
+    chain: "optimism",
+    label: "OP Foundation Locked Grants Wallet",
+    accountType: "project",
+    walletType: "project",
+    isWallet: true,
+    confidence: "verified",
+    source: "Optimism Documentation",
+    sourceUrl: "https://docs.optimism.io/governance/capital-allocation",
+    explanation:
+      "Optimism documentation identifies this Foundation wallet as the wallet used to hold OP assigned to one-year grant lockups.",
+  },
+
+  /* =======================================================
+     LIDO
+     Official Lido docs publish the governance addresses below.
+     ======================================================= */
+  {
+    address: "0x2e59A20f205bB85a89C53f1936454680651E618e",
+    project: "Lido DAO",
+    symbol: "LDO",
+    chain: "ethereum",
+    label: "Lido Aragon Voting",
+    accountType: "governance",
+    walletType: "project",
+    isWallet: false,
+    confidence: "verified",
+    source: "Lido Documentation",
+    sourceUrl: "https://docs.lido.fi/guides/protocol-levers/",
+    explanation:
+      "Lido documentation identifies this contract as the Aragon Voting component used for LDO token governance.",
+  },
+  {
+    address: "0x3e40D73EB977Dc6a537aF587D48316feE66E9C8c",
+    project: "Lido DAO",
+    symbol: "LDO",
+    chain: "ethereum",
+    label: "Lido Aragon Agent",
+    accountType: "governance",
+    walletType: "project",
+    isWallet: false,
+    confidence: "verified",
+    source: "Lido Documentation",
+    sourceUrl: "https://docs.lido.fi/guides/protocol-levers/",
+    explanation:
+      "Lido documentation identifies this address as the Aragon DAO execution agent used by Lido governance.",
+  },
+  {
+    address: "0xF0211b7660680B49De1A7E9f25C65660F0a13Fea",
+    project: "Lido DAO",
+    symbol: "LDO",
+    chain: "ethereum",
+    label: "Lido Easy Track",
+    accountType: "governance",
+    walletType: "project",
+    isWallet: false,
+    confidence: "verified",
+    source: "Lido Documentation",
+    sourceUrl: "https://docs.lido.fi/guides/protocol-levers/",
+    explanation:
+      "Lido documentation identifies this contract as Easy Track, its optimistic governance mechanism for routine operations.",
+  },
+
+  /* =======================================================
+     COMPOUND
+     Official Compound documentation lists its main governance
+     and timelock contracts on Ethereum.
+     ======================================================= */
+  {
+    address: "0x309a862bbC1A00e45506cB8A802D1ff10004c8C0",
+    project: "Compound",
+    symbol: "COMP",
+    chain: "ethereum",
+    label: "Compound Governor Bravo",
+    accountType: "governance",
+    walletType: "project",
+    isWallet: false,
+    confidence: "verified",
+    source: "Compound Documentation",
+    sourceUrl: "https://docs.compound.finance/",
+    explanation:
+      "Compound documentation lists this Ethereum contract as the Governor used by Compound governance.",
+  },
+  {
+    address: "0x6d903f6003cca6255d85cca4d3b5e5146dc33925",
+    project: "Compound",
+    symbol: "COMP",
+    chain: "ethereum",
+    label: "Compound Timelock",
+    accountType: "governance",
+    walletType: "treasury",
+    isWallet: false,
+    confidence: "verified",
+    source: "Compound Documentation",
+    sourceUrl: "https://docs.compound.finance/",
+    explanation:
+      "Compound documentation lists this Ethereum address as the governance timelock that administers protocol actions.",
   },
 ];
 
