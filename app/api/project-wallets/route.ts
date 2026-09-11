@@ -86,6 +86,26 @@ export async function GET(request: NextRequest) {
       comp: "Compound",
       compound: "Compound",
       "compound finance": "Compound",
+
+      cys: "Cysic",
+      cysic: "Cysic",
+
+      sushi: "Sushi DAO",
+      "sushi dao": "Sushi DAO",
+      sushiswap: "Sushi DAO",
+
+      pol: "Polygon",
+      matic: "Polygon",
+      polygon: "Polygon",
+      "polygon pos": "Polygon",
+
+      cvx: "Convex Finance",
+      convex: "Convex Finance",
+      "convex finance": "Convex Finance",
+
+      fxs: "Frax Finance",
+      frax: "Frax Finance",
+      "frax finance": "Frax Finance",
     };
 
     const resolvedProject = aliasMap[normalized] ?? project;
