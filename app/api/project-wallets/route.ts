@@ -106,6 +106,39 @@ export async function GET(request: NextRequest) {
       fxs: "Frax Finance",
       frax: "Frax Finance",
       "frax finance": "Frax Finance",
+
+      eth: "Ethereum",
+      ethereum: "Ethereum",
+
+      bnb: "BNB Chain",
+      "bnb chain": "BNB Chain",
+      binance: "BNB Chain",
+
+      ondo: "Ondo Finance",
+      "ondo finance": "Ondo Finance",
+
+      pepe: "Pepe",
+
+      pengu: "Pudgy Penguins",
+      "pudgy penguins": "Pudgy Penguins",
+
+      avax: "Avalanche",
+      avalanche: "Avalanche",
+
+      link: "Chainlink",
+      chainlink: "Chainlink",
+
+      render: "Render Network",
+      rndr: "Render Network",
+      "render network": "Render Network",
+
+      fet: "Fetch.ai",
+      fetch: "Fetch.ai",
+      "fetch.ai": "Fetch.ai",
+      "artificial superintelligence alliance": "Fetch.ai",
+
+      jup: "Jupiter",
+      jupiter: "Jupiter",
     };
 
     const resolvedProject = aliasMap[normalized] ?? project;
