@@ -39,8 +39,10 @@ export type ProjectWalletRecord = {
 };
 
 /*
-  PRISM's attribution registry is evidence-first. Every record must have a
-  public source. Unknown accounts stay unknown rather than being guessed.
+  PRISM's attribution registry is evidence-first. Every record has a
+  reviewable public source. Token, protocol and governance contracts are
+  labelled exactly as such; PRISM does not call them team/treasury wallets
+  unless the source supports that claim.
 */
 const PROJECT_WALLETS: ProjectWalletRecord[] = [
   // AAVE
@@ -325,7 +327,7 @@ const PROJECT_WALLETS: ProjectWalletRecord[] = [
     explanation: "Compound documentation lists this Ethereum address as the governance timelock that administers protocol actions.",
   },
 
-  // CYSIC — official token contracts published by the Cysic Foundation.
+  // CYSIC
   {
     address: "0x0C69199C1562233640e0Db5Ce2c399A88eB507C7",
     project: "Cysic",
@@ -473,6 +475,236 @@ const PROJECT_WALLETS: ProjectWalletRecord[] = [
     source: "Frax Finance Documentation",
     sourceUrl: "https://docs.frax.finance/frax-v1-original/core-frax-multisigs",
     explanation: "Frax documentation identifies this address as the protocol Treasury multisig.",
+  },
+
+  // ETHEREUM — protocol contract, not an Ethereum Foundation treasury wallet.
+  {
+    address: "0x00000000219ab540356cBB839Cbe05303d7705Fa",
+    project: "Ethereum",
+    symbol: "ETH",
+    chain: "ethereum",
+    label: "Ethereum Beacon Deposit Contract",
+    accountType: "project",
+    walletType: "project",
+    isWallet: false,
+    confidence: "verified",
+    source: "Ethereum Foundation Blog / EIP-6110",
+    sourceUrl: "https://blog.ethereum.org/2020/11/04/eth2-quick-update-no-19",
+    explanation: "Ethereum Foundation material identifies this as the Ethereum mainnet validator deposit contract. It is a protocol contract, not a Foundation treasury wallet.",
+  },
+
+  // BNB CHAIN — built-in governance system contracts.
+  {
+    address: "0x0000000000000000000000000000000000002004",
+    project: "BNB Chain",
+    symbol: "BNB",
+    chain: "bnb",
+    label: "BNB Chain Governor Contract",
+    accountType: "governance",
+    walletType: "project",
+    isWallet: false,
+    confidence: "verified",
+    source: "BNB Chain Documentation",
+    sourceUrl: "https://docs.bnbchain.org/bc-fusion/developers/system-contracts/",
+    explanation: "BNB Chain documentation publishes this address as its built-in Governor system contract.",
+  },
+  {
+    address: "0x0000000000000000000000000000000000002006",
+    project: "BNB Chain",
+    symbol: "BNB",
+    chain: "bnb",
+    label: "BNB Chain Timelock Contract",
+    accountType: "governance",
+    walletType: "project",
+    isWallet: false,
+    confidence: "verified",
+    source: "BNB Chain Documentation",
+    sourceUrl: "https://docs.bnbchain.org/bc-fusion/developers/system-contracts/",
+    explanation: "BNB Chain documentation publishes this address as its built-in governance Timelock contract.",
+  },
+
+  // ONDO FINANCE — official application/protocol contracts.
+  {
+    address: "0x93358db73B6cd4b98D89c8F5f230E81a95c2643a",
+    project: "Ondo Finance",
+    symbol: "ONDO",
+    chain: "ethereum",
+    label: "Ondo OUSG Instant Manager",
+    accountType: "project",
+    walletType: "project",
+    isWallet: false,
+    confidence: "verified",
+    source: "Ondo Finance Documentation",
+    sourceUrl: "https://docs.ondo.finance/addresses",
+    explanation: "Ondo documentation identifies this Ethereum contract as the OUSG Instant Manager used by the Ondo application for OUSG minting and redemption flows.",
+  },
+  {
+    address: "0x2c158BC456e027b2AfFCCadF1BDBD9f5fC4c5C8c",
+    project: "Ondo Finance",
+    symbol: "ONDO",
+    chain: "ethereum",
+    label: "Ondo Global Markets Token Manager",
+    accountType: "project",
+    walletType: "project",
+    isWallet: false,
+    confidence: "verified",
+    source: "Ondo Finance Documentation",
+    sourceUrl: "https://docs.ondo.finance/addresses",
+    explanation: "Ondo documentation identifies this Ethereum contract as the Global Markets token manager used for mint and redemption operations.",
+  },
+  {
+    address: "0x91f8Aff3738825e8eB16FC6f6b1A7A4647bDB299",
+    project: "Ondo Finance",
+    symbol: "ONDO",
+    chain: "bnb",
+    label: "Ondo Global Markets Token Manager — BNB Chain",
+    accountType: "project",
+    walletType: "project",
+    isWallet: false,
+    confidence: "verified",
+    source: "Ondo Finance Documentation",
+    sourceUrl: "https://docs.ondo.finance/addresses",
+    explanation: "Ondo documentation identifies this BNB Chain contract as the Global Markets token manager used for mint and redemption operations.",
+  },
+
+  // PEPE — canonical token contract, not a treasury/team wallet.
+  {
+    address: "0x6982508145454Ce325dDbE47a25d4ec3d2311933",
+    project: "Pepe",
+    symbol: "PEPE",
+    chain: "ethereum",
+    label: "PEPE Canonical Token Contract",
+    accountType: "project",
+    walletType: "project",
+    isWallet: false,
+    confidence: "high",
+    source: "CertiK PEPE Contract Profile",
+    sourceUrl: "https://skynet.certik.com/projects/pepe",
+    explanation: "This is the widely verified canonical PEPE ERC-20 contract on Ethereum. PEPE has no formal project treasury implied by this attribution.",
+  },
+
+  // PUDGY PENGUINS / PENGU
+  {
+    address: "2zMMhcVQEXDtdE6vsFS7S7D5oUodfJHE8vd1gnBouauv",
+    project: "Pudgy Penguins",
+    symbol: "PENGU",
+    chain: "solana",
+    label: "PENGU Solana Mint",
+    accountType: "project",
+    walletType: "project",
+    isWallet: false,
+    confidence: "verified",
+    source: "PENGU MiCA Whitepaper",
+    sourceUrl: "https://www.penguwhitepaper.com/",
+    explanation: "The PENGU whitepaper publishes this address as the PENGU token mint on Solana.",
+  },
+  {
+    address: "0x6418c0dd099a9fda397c766304cdd918233e8847",
+    project: "Pudgy Penguins",
+    symbol: "PENGU",
+    chain: "bnb",
+    label: "PENGU Token — BNB Chain",
+    accountType: "project",
+    walletType: "project",
+    isWallet: false,
+    confidence: "verified",
+    source: "PENGU MiCA Whitepaper",
+    sourceUrl: "https://www.penguwhitepaper.com/",
+    explanation: "The PENGU whitepaper publishes this address as the PENGU token contract on BNB Smart Chain.",
+  },
+  {
+    address: "0x6418c0dd099a9FDA397C766304CDd918233E8847",
+    project: "Pudgy Penguins",
+    symbol: "PENGU",
+    chain: "ethereum",
+    label: "PENGU Token — Ethereum",
+    accountType: "project",
+    walletType: "project",
+    isWallet: false,
+    confidence: "verified",
+    source: "PENGU MiCA Whitepaper",
+    sourceUrl: "https://www.penguwhitepaper.com/",
+    explanation: "The PENGU whitepaper publishes this address as the PENGU token contract on Ethereum.",
+  },
+
+  // AVALANCHE
+  {
+    address: "0x7C43605E14F391720e1b37E49C78C4b03A488d98",
+    project: "Avalanche",
+    symbol: "AVAX",
+    chain: "avalanche",
+    label: "Avalanche Teleporter Registry",
+    accountType: "project",
+    walletType: "project",
+    isWallet: false,
+    confidence: "verified",
+    source: "Avalanche Builder Hub",
+    sourceUrl: "https://build.avax.network/docs/cross-chain/icm-contracts/overview",
+    explanation: "Avalanche Builder Hub publishes this as the canonical Teleporter Registry contract on Avalanche Mainnet C-Chain.",
+  },
+
+  // CHAINLINK
+  {
+    address: "0x514910771AF9Ca656af840dff83E8264EcF986CA",
+    project: "Chainlink",
+    symbol: "LINK",
+    chain: "ethereum",
+    label: "LINK Token Contract",
+    accountType: "project",
+    walletType: "project",
+    isWallet: false,
+    confidence: "verified",
+    source: "Chainlink Documentation",
+    sourceUrl: "https://chain.link/blog/introducing-the-chainlink-feed-registry",
+    explanation: "Chainlink documentation identifies this address as the LINK token contract on Ethereum mainnet.",
+  },
+
+  // RENDER NETWORK
+  {
+    address: "rndrizKT3MK1iimdxRdWabcF7Zg7AR5T4nud4EkHBof",
+    project: "Render Network",
+    symbol: "RENDER",
+    chain: "solana",
+    label: "RENDER Solana Mint",
+    accountType: "project",
+    walletType: "project",
+    isWallet: false,
+    confidence: "verified",
+    source: "Render Network Knowledge Base",
+    sourceUrl: "https://know.rendernetwork.com/general-render-network/rndr-to-render-what-you-need-to-know/render-network-upgrade-portal-faq",
+    explanation: "Render Network documentation explicitly publishes this as the official RENDER token mint on Solana.",
+  },
+
+  // FETCH.AI / ASI ALLIANCE
+  {
+    address: "0xaea46A60368A7bD060eec7DF8CBa43b7EF41Ad85",
+    project: "Fetch.ai",
+    symbol: "FET",
+    chain: "ethereum",
+    label: "Fetch.ai FET ERC-20 Contract",
+    accountType: "project",
+    walletType: "project",
+    isWallet: false,
+    confidence: "verified",
+    source: "Fetch.ai Network Documentation",
+    sourceUrl: "https://network.fetch.ai/docs/guides/network/different-ways-to-stake-the-fet-token",
+    explanation: "Fetch.ai documentation provides this address as the ERC-20 FET token contract on Ethereum.",
+  },
+
+  // JUPITER
+  {
+    address: "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
+    project: "Jupiter",
+    symbol: "JUP",
+    chain: "solana",
+    label: "JUP Solana Mint",
+    accountType: "project",
+    walletType: "project",
+    isWallet: false,
+    confidence: "verified",
+    source: "Jupiter Developer Documentation",
+    sourceUrl: "https://developers.jup.ag/docs/guides/how-to-get-token-information",
+    explanation: "Jupiter's developer documentation returns this mint as the verified JUP token on Solana.",
   },
 ];
 
