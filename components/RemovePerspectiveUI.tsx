@@ -6,12 +6,55 @@ function hideElement(element: Element | null) {
   if (!(element instanceof HTMLElement)) return;
   element.style.display = "none";
   element.setAttribute("aria-hidden", "true");
-  element.dataset.prismPerspectiveHidden = "true";
+}
+
+function replaceButtonLabel(button: HTMLButtonElement, label: string) {
+  const textNodes = Array.from(button.childNodes).filter(
+    (node) => node.nodeType === Node.TEXT_NODE && node.textContent?.trim()
+  );
+
+  if (textNodes.length > 0) {
+    textNodes[0].textContent = ` ${label} `;
+    return;
+  }
+
+  const spans = Array.from(button.querySelectorAll("span"));
+  const candidate = spans.find((span) => {
+    const text = span.textContent?.trim().toLowerCase() ?? "";
+    return text === "perspective" || text === "view";
+  });
+  if (candidate) candidate.textContent = label;
+}
+
+function ensureUnlockHost() {
+  const section = document.getElementById("perspective");
+  if (!section) return;
+
+  section.style.display = "";
+  section.removeAttribute("aria-hidden");
+  section.dataset.prismUnlockSection = "true";
+
+  Array.from(section.children).forEach((child) => {
+    if (!(child instanceof HTMLElement)) return;
+    if (child.dataset.prismUnlockHost === "true") return;
+    child.style.display = "none";
+    child.setAttribute("aria-hidden", "true");
+  });
+
+  let host = section.querySelector<HTMLElement>("[data-prism-unlock-host='true']");
+  if (!host) {
+    host = document.createElement("div");
+    host.dataset.prismUnlockHost = "true";
+    host.className = "prism-container py-14 sm:py-20";
+    section.appendChild(host);
+  }
 }
 
 function cleanPerspectiveUI() {
-  hideElement(document.getElementById("perspective"));
+  ensureUnlockHost();
 
+  // The old Investigation Pipeline card is tied to the removed Perspective API,
+  // so keep it out of the pipeline rather than showing a misleading status.
   document
     .querySelectorAll<HTMLElement>('a[href="#perspective"]')
     .forEach(hideElement);
@@ -19,13 +62,24 @@ function cleanPerspectiveUI() {
   document.querySelectorAll<HTMLButtonElement>("button").forEach((button) => {
     const text = button.textContent?.replace(/\s+/g, " ").trim().toLowerCase() ?? "";
 
-    if (
-      text.includes("perspective") ||
-      text === "03 view" ||
-      text === "view"
-    ) {
-      const continueWrapper = button.closest("div.flex.justify-center");
-      hideElement(continueWrapper ?? button);
+    if (text.includes("continue to prism perspective")) {
+      replaceButtonLabel(button, "Continue to Unlock Intelligence");
+      button.style.display = "";
+      button.removeAttribute("aria-hidden");
+      return;
+    }
+
+    if (text.includes("perspective")) {
+      replaceButtonLabel(button, "Unlocks");
+      button.style.display = "";
+      button.removeAttribute("aria-hidden");
+      return;
+    }
+
+    if (text === "03 view" || text === "view") {
+      replaceButtonLabel(button, "Unlocks");
+      button.style.display = "";
+      button.removeAttribute("aria-hidden");
     }
   });
 
