@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import ThemeToggle from "@/components/ThemeToggle";
 import UnlockIntelligenceConsole from "@/components/UnlockIntelligenceConsole";
+import RemovePerspectiveUI from "@/components/RemovePerspectiveUI";
 import "./globals.css";
 import "./theme.css";
 import "./dark-fixes.css";
@@ -44,6 +45,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col">
         {children}
         <UnlockIntelligenceConsole />
+        <RemovePerspectiveUI />
         <ThemeToggle />
       </body>
     </html>
