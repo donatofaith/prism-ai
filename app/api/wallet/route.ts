@@ -15,7 +15,7 @@ type EvmWalletChain =
   | "avalanche";
 
 type Direction = "incoming" | "outgoing" | "contract";
-type VerificationStatus = "native" | "verified" | "unverified" | "suspicious";
+type VerificationStatus = "native" | "verified" | "unverified";
 type Importance = "high" | "medium" | "low";
 type MovementContext =
   | "exchange_inflow"
@@ -33,6 +33,12 @@ type ChainConfig = {
   explorerBase: string;
   nativeSymbol: string;
   nativeName: string;
+};
+
+type VerifiedToken = {
+  symbol: string;
+  name: string;
+  decimals: number;
 };
 
 type RawTransfer = {
@@ -69,7 +75,10 @@ const CHAIN_CONFIG: Record<EvmWalletChain, ChainConfig> = {
   ethereum: {
     name: "Ethereum Mainnet",
     alchemyBase: "https://eth-mainnet.g.alchemy.com/v2",
-    publicRpcs: ["https://ethereum-rpc.publicnode.com", "https://rpc.ankr.com/eth"],
+    publicRpcs: [
+      "https://ethereum-rpc.publicnode.com",
+      "https://rpc.ankr.com/eth",
+    ],
     explorerBase: "https://etherscan.io",
     nativeSymbol: "ETH",
     nativeName: "Ether",
@@ -77,7 +86,10 @@ const CHAIN_CONFIG: Record<EvmWalletChain, ChainConfig> = {
   arbitrum: {
     name: "Arbitrum One",
     alchemyBase: "https://arb-mainnet.g.alchemy.com/v2",
-    publicRpcs: ["https://arb1.arbitrum.io/rpc", "https://arbitrum-one-rpc.publicnode.com"],
+    publicRpcs: [
+      "https://arb1.arbitrum.io/rpc",
+      "https://arbitrum-one-rpc.publicnode.com",
+    ],
     explorerBase: "https://arbiscan.io",
     nativeSymbol: "ETH",
     nativeName: "Ether",
@@ -85,7 +97,10 @@ const CHAIN_CONFIG: Record<EvmWalletChain, ChainConfig> = {
   base: {
     name: "Base Mainnet",
     alchemyBase: "https://base-mainnet.g.alchemy.com/v2",
-    publicRpcs: ["https://mainnet.base.org", "https://base-rpc.publicnode.com"],
+    publicRpcs: [
+      "https://base-rpc.publicnode.com",
+      "https://mainnet.base.org",
+    ],
     explorerBase: "https://basescan.org",
     nativeSymbol: "ETH",
     nativeName: "Ether",
@@ -93,7 +108,10 @@ const CHAIN_CONFIG: Record<EvmWalletChain, ChainConfig> = {
   optimism: {
     name: "OP Mainnet",
     alchemyBase: "https://opt-mainnet.g.alchemy.com/v2",
-    publicRpcs: ["https://mainnet.optimism.io", "https://optimism-rpc.publicnode.com"],
+    publicRpcs: [
+      "https://optimism-rpc.publicnode.com",
+      "https://mainnet.optimism.io",
+    ],
     explorerBase: "https://optimistic.etherscan.io",
     nativeSymbol: "ETH",
     nativeName: "Ether",
@@ -101,7 +119,10 @@ const CHAIN_CONFIG: Record<EvmWalletChain, ChainConfig> = {
   polygon: {
     name: "Polygon PoS",
     alchemyBase: "https://polygon-mainnet.g.alchemy.com/v2",
-    publicRpcs: ["https://polygon-rpc.com", "https://polygon-bor-rpc.publicnode.com"],
+    publicRpcs: [
+      "https://polygon-bor-rpc.publicnode.com",
+      "https://polygon-rpc.com",
+    ],
     explorerBase: "https://polygonscan.com",
     nativeSymbol: "POL",
     nativeName: "POL",
@@ -109,7 +130,10 @@ const CHAIN_CONFIG: Record<EvmWalletChain, ChainConfig> = {
   bnb: {
     name: "BNB Smart Chain",
     alchemyBase: "https://bnb-mainnet.g.alchemy.com/v2",
-    publicRpcs: ["https://bsc-dataseed.binance.org", "https://bsc-rpc.publicnode.com"],
+    publicRpcs: [
+      "https://bsc-rpc.publicnode.com",
+      "https://bsc-dataseed.binance.org",
+    ],
     explorerBase: "https://bscscan.com",
     nativeSymbol: "BNB",
     nativeName: "BNB",
@@ -117,43 +141,106 @@ const CHAIN_CONFIG: Record<EvmWalletChain, ChainConfig> = {
   avalanche: {
     name: "Avalanche C-Chain",
     alchemyBase: "https://avax-mainnet.g.alchemy.com/v2",
-    publicRpcs: ["https://api.avax.network/ext/bc/C/rpc", "https://avalanche-c-chain-rpc.publicnode.com"],
+    publicRpcs: [
+      "https://avalanche-c-chain-rpc.publicnode.com",
+      "https://api.avax.network/ext/bc/C/rpc",
+    ],
     explorerBase: "https://snowtrace.io",
     nativeSymbol: "AVAX",
     nativeName: "Avalanche",
   },
 };
 
-const VERIFIED_TOKENS: Record<EvmWalletChain, Record<string, { symbol: string; name: string }>> = {
+const VERIFIED_TOKENS: Record<
+  EvmWalletChain,
+  Record<string, VerifiedToken>
+> = {
   ethereum: {
-    "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48": { symbol: "USDC", name: "USD Coin" },
-    "0xdac17f958d2ee523a2206206994597c13d831ec7": { symbol: "USDT", name: "Tether USD" },
-    "0x6b175474e89094c44da98b954eedeac495271d0f": { symbol: "DAI", name: "Dai Stablecoin" },
-    "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2": { symbol: "WETH", name: "Wrapped Ether" },
-    "0x514910771af9ca656af840dff83e8264ecf986ca": { symbol: "LINK", name: "Chainlink" },
-    "0x1f9840a85d5af5bf1d1762f925bdaddc4201f984": { symbol: "UNI", name: "Uniswap" },
-    "0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddae9": { symbol: "AAVE", name: "Aave" },
-    "0xc18360217d8f7ab5e7c516566761ea12ce7f9d72": { symbol: "ENS", name: "Ethereum Name Service" },
+    "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48": {
+      symbol: "USDC",
+      name: "USD Coin",
+      decimals: 6,
+    },
+    "0xdac17f958d2ee523a2206206994597c13d831ec7": {
+      symbol: "USDT",
+      name: "Tether USD",
+      decimals: 6,
+    },
+    "0x6b175474e89094c44da98b954eedeac495271d0f": {
+      symbol: "DAI",
+      name: "Dai Stablecoin",
+      decimals: 18,
+    },
+    "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2": {
+      symbol: "WETH",
+      name: "Wrapped Ether",
+      decimals: 18,
+    },
+    "0x514910771af9ca656af840dff83e8264ecf986ca": {
+      symbol: "LINK",
+      name: "Chainlink",
+      decimals: 18,
+    },
+    "0x1f9840a85d5af5bf1d1762f925bdaddc4201f984": {
+      symbol: "UNI",
+      name: "Uniswap",
+      decimals: 18,
+    },
+    "0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddae9": {
+      symbol: "AAVE",
+      name: "Aave",
+      decimals: 18,
+    },
+    "0xc18360217d8f7ab5e7c516566761ea12ce7f9d72": {
+      symbol: "ENS",
+      name: "Ethereum Name Service",
+      decimals: 18,
+    },
   },
   arbitrum: {
-    "0x912ce59144191c1204e64559fe8253a0e49e6548": { symbol: "ARB", name: "Arbitrum" },
-    "0xaf88d065e77c8cc2239327c5edb3a432268e5831": { symbol: "USDC", name: "USD Coin" },
-    "0xfd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb9": { symbol: "USDT", name: "Tether USD" },
+    "0x912ce59144191c1204e64559fe8253a0e49e6548": {
+      symbol: "ARB",
+      name: "Arbitrum",
+      decimals: 18,
+    },
+    "0xaf88d065e77c8cc2239327c5edb3a432268e5831": {
+      symbol: "USDC",
+      name: "USD Coin",
+      decimals: 6,
+    },
+    "0xfd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb9": {
+      symbol: "USDT",
+      name: "Tether USD",
+      decimals: 6,
+    },
   },
   base: {
-    "0x19e8d59ff3d7a31289e0dc04db48d43b02c7ffa6": { symbol: "CYS", name: "Cysic" },
+    "0x19e8d59ff3d7a31289e0dc04db48d43b02c7ffa6": {
+      symbol: "CYS",
+      name: "Cysic",
+      decimals: 18,
+    },
   },
   optimism: {
-    "0x4200000000000000000000000000000000000042": { symbol: "OP", name: "Optimism" },
+    "0x4200000000000000000000000000000000000042": {
+      symbol: "OP",
+      name: "Optimism",
+      decimals: 18,
+    },
   },
   polygon: {},
   bnb: {
-    "0x0c69199c1562233640e0db5ce2c399a88eb507c7": { symbol: "CYS", name: "Cysic" },
+    "0x0c69199c1562233640e0db5ce2c399a88eb507c7": {
+      symbol: "CYS",
+      name: "Cysic",
+      decimals: 18,
+    },
   },
   avalanche: {},
 };
 
-const TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
+const TRANSFER_TOPIC =
+  "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
 
 function normalizeAddress(value?: string | null) {
   return value?.trim().toLowerCase() ?? "";
@@ -172,7 +259,9 @@ function short(address?: string | null) {
 }
 
 function topicAddress(address: string) {
-  return `0x${normalizeAddress(address).replace(/^0x/, "").padStart(64, "0")}`;
+  return `0x${normalizeAddress(address)
+    .replace(/^0x/, "")
+    .padStart(64, "0")}`;
 }
 
 function fromTopic(topic?: string) {
@@ -190,7 +279,9 @@ function hexToNumber(hex?: string | null) {
 }
 
 function decodeTokenAmount(rawValueHex: string | null, decimals: number | null) {
-  if (!rawValueHex || decimals === null || decimals < 0 || decimals > 36) return null;
+  if (!rawValueHex || decimals === null || decimals < 0 || decimals > 36) {
+    return null;
+  }
 
   try {
     const raw = BigInt(rawValueHex);
@@ -202,7 +293,9 @@ function decodeTokenAmount(rawValueHex: string | null, decimals: number | null) 
       .padStart(decimals, "0")
       .replace(/0+$/, "")
       .slice(0, 8);
-    const text = fractionText ? `${whole.toString()}.${fractionText}` : whole.toString();
+    const text = fractionText
+      ? `${whole.toString()}.${fractionText}`
+      : whole.toString();
     const value = Number(text);
     return Number.isFinite(value) ? value : null;
   } catch {
@@ -217,10 +310,18 @@ function readableAmount(value: number | null) {
   }).format(value);
 }
 
-async function jsonRpc(url: string, method: string, params: unknown[], id = 1) {
+async function jsonRpc(
+  url: string,
+  method: string,
+  params: unknown[],
+  id = 1
+) {
   const response = await fetch(url, {
     method: "POST",
-    headers: { "content-type": "application/json", accept: "application/json" },
+    headers: {
+      "content-type": "application/json",
+      accept: "application/json",
+    },
     body: JSON.stringify({ jsonrpc: "2.0", id, method, params }),
     cache: "no-store",
   });
@@ -234,22 +335,42 @@ async function jsonRpc(url: string, method: string, params: unknown[], id = 1) {
   return data.result;
 }
 
-async function firstWorkingRpc(chain: EvmWalletChain) {
+function rpcCandidates(chain: EvmWalletChain, preferred?: string | null) {
   const config = CHAIN_CONFIG[chain];
   const override = process.env[`PRISM_${chain.toUpperCase()}_RPC_URL`];
-  const candidates = [override, ...config.publicRpcs].filter(Boolean) as string[];
+  const apiKey = process.env.ALCHEMY_API_KEY;
+  const alchemy = apiKey ? `${config.alchemyBase}/${apiKey}` : null;
+
+  return Array.from(
+    new Set(
+      [preferred, override, ...config.publicRpcs, alchemy].filter(Boolean) as string[]
+    )
+  );
+}
+
+async function rpcWithFallback(
+  chain: EvmWalletChain,
+  method: string,
+  params: unknown[],
+  preferred?: string | null
+) {
   let lastError = "No RPC provider responded.";
 
-  for (const url of candidates) {
+  for (const url of rpcCandidates(chain, preferred)) {
     try {
-      await jsonRpc(url, "eth_blockNumber", []);
-      return url;
+      const result = await jsonRpc(url, method, params);
+      return { result, url };
     } catch (error) {
       lastError = error instanceof Error ? error.message : lastError;
     }
   }
 
   throw new Error(lastError);
+}
+
+async function firstWorkingRpc(chain: EvmWalletChain) {
+  const response = await rpcWithFallback(chain, "eth_blockNumber", []);
+  return response.url;
 }
 
 async function alchemyTransfers(
@@ -259,7 +380,10 @@ async function alchemyTransfers(
   direction: Exclude<Direction, "contract">
 ) {
   const config = CHAIN_CONFIG[chain];
-  const directionParams = direction === "incoming" ? { toAddress: wallet } : { fromAddress: wallet };
+  const directionParams =
+    direction === "incoming"
+      ? { toAddress: wallet }
+      : { fromAddress: wallet };
 
   const result = await jsonRpc(
     `${config.alchemyBase}/${apiKey}`,
@@ -279,51 +403,72 @@ async function alchemyTransfers(
     direction === "incoming" ? 11 : 12
   );
 
-  return (result?.transfers ?? []).map((t: any): RawTransfer => ({
-    hash: t.hash ?? null,
-    blockNumber: t.blockNum ?? null,
-    timestamp: t.metadata?.blockTimestamp ?? null,
-    direction,
-    tokenContract: normalizeAddress(t.rawContract?.address) || null,
-    value: typeof t.value === "number" ? t.value : null,
-    rawValueHex: null,
-    asset: t.asset ?? null,
-    category: t.category === "external" ? "external" : "erc20",
-    from: t.from ?? "",
-    to: t.to ?? "",
-  }));
+  return (result?.transfers ?? []).map(
+    (t: any): RawTransfer => ({
+      hash: t.hash ?? null,
+      blockNumber: t.blockNum ?? null,
+      timestamp: t.metadata?.blockTimestamp ?? null,
+      direction,
+      tokenContract: normalizeAddress(t.rawContract?.address) || null,
+      value: typeof t.value === "number" ? t.value : null,
+      rawValueHex: null,
+      asset: t.asset ?? null,
+      category: t.category === "external" ? "external" : "erc20",
+      from: t.from ?? "",
+      to: t.to ?? "",
+    })
+  );
 }
 
 async function scanRecentLogs(
-  rpc: string,
+  chain: EvmWalletChain,
   filter: { address?: string; topics: (string | null)[] },
   maxResults = 20
 ) {
-  const latestHex = await jsonRpc(rpc, "eth_blockNumber", []);
-  const latest = hexToNumber(latestHex);
-  const chunkSizes = [10000, 5000, 2000];
+  const preferred = await firstWorkingRpc(chain);
+  const latestResponse = await rpcWithFallback(
+    chain,
+    "eth_blockNumber",
+    [],
+    preferred
+  );
+  const latest = hexToNumber(latestResponse.result);
+  const chunkSizes = [5000, 2000, 1000];
   const maxBlocksToInspect = 250000;
 
   for (const chunkSize of chunkSizes) {
     const collected: any[] = [];
     let cursor = latest;
     let scanned = 0;
+    let currentPreferred = latestResponse.url;
     let providerAcceptedRange = false;
 
-    while (cursor >= 0 && scanned < maxBlocksToInspect && collected.length < maxResults) {
+    while (
+      cursor >= 0 &&
+      scanned < maxBlocksToInspect &&
+      collected.length < maxResults
+    ) {
       const from = Math.max(0, cursor - chunkSize + 1);
 
       try {
-        const logs = await jsonRpc(rpc, "eth_getLogs", [
-          {
-            fromBlock: `0x${from.toString(16)}`,
-            toBlock: `0x${cursor.toString(16)}`,
-            ...filter,
-          },
-        ]);
+        const response = await rpcWithFallback(
+          chain,
+          "eth_getLogs",
+          [
+            {
+              fromBlock: `0x${from.toString(16)}`,
+              toBlock: `0x${cursor.toString(16)}`,
+              ...filter,
+            },
+          ],
+          currentPreferred
+        );
 
+        currentPreferred = response.url;
         providerAcceptedRange = true;
-        if (Array.isArray(logs) && logs.length) collected.push(...logs);
+        if (Array.isArray(response.result) && response.result.length) {
+          collected.push(...response.result);
+        }
         scanned += cursor - from + 1;
         cursor = from - 1;
       } catch {
@@ -333,37 +478,58 @@ async function scanRecentLogs(
     }
 
     if (providerAcceptedRange) {
-      return collected
-        .sort((a, b) => hexToNumber(b.blockNumber) - hexToNumber(a.blockNumber))
-        .slice(0, maxResults);
+      return {
+        logs: collected
+          .sort(
+            (a, b) =>
+              hexToNumber(b.blockNumber) - hexToNumber(a.blockNumber)
+          )
+          .slice(0, maxResults),
+        rpc: currentPreferred,
+      };
     }
   }
 
-  return [] as any[];
+  return { logs: [] as any[], rpc: preferred };
 }
 
-async function blockTimestampMap(rpc: string, logs: any[]) {
+async function blockTimestampMap(
+  chain: EvmWalletChain,
+  logs: any[],
+  preferred?: string | null
+) {
   const uniqueBlocks = Array.from(
     new Set(logs.map((log) => log.blockNumber).filter(Boolean))
-  ).slice(0, 20) as string[];
+  ).slice(0, 12) as string[];
 
-  const entries = await Promise.all(
-    uniqueBlocks.map(async (blockNumber) => {
-      try {
-        const block = await jsonRpc(rpc, "eth_getBlockByNumber", [blockNumber, false]);
-        const seconds = hexToNumber(block?.timestamp);
-        return [blockNumber, seconds ? new Date(seconds * 1000).toISOString() : null] as const;
-      } catch {
-        return [blockNumber, null] as const;
-      }
-    })
-  );
+  const map = new Map<string, string | null>();
+  let currentPreferred = preferred ?? null;
 
-  return new Map<string, string | null>(entries);
+  // Intentionally sequential: public RPCs often rate-limit large parallel bursts.
+  for (const blockNumber of uniqueBlocks) {
+    try {
+      const response = await rpcWithFallback(
+        chain,
+        "eth_getBlockByNumber",
+        [blockNumber, false],
+        currentPreferred
+      );
+      currentPreferred = response.url;
+      const seconds = hexToNumber(response.result?.timestamp);
+      map.set(
+        blockNumber,
+        seconds ? new Date(seconds * 1000).toISOString() : null
+      );
+    } catch {
+      map.set(blockNumber, null);
+    }
+  }
+
+  return map;
 }
 
 async function recentTransferLogs(
-  rpc: string,
+  chain: EvmWalletChain,
   wallet: string,
   direction: Exclude<Direction, "contract">
 ) {
@@ -372,45 +538,58 @@ async function recentTransferLogs(
       ? [TRANSFER_TOPIC, null, topicAddress(wallet)]
       : [TRANSFER_TOPIC, topicAddress(wallet)];
 
-  const logs = await scanRecentLogs(rpc, { topics });
-  const timestamps = await blockTimestampMap(rpc, logs);
+  const { logs, rpc } = await scanRecentLogs(chain, { topics });
+  const timestamps = await blockTimestampMap(chain, logs, rpc);
 
-  return logs.map((log: any): RawTransfer => ({
-    hash: log.transactionHash ?? null,
-    blockNumber: log.blockNumber ?? null,
-    timestamp: timestamps.get(log.blockNumber) ?? null,
-    direction,
-    tokenContract: normalizeAddress(log.address) || null,
-    value: null,
-    rawValueHex: typeof log.data === "string" ? log.data : null,
-    asset: null,
-    category: "erc20",
-    from: fromTopic(log.topics?.[1]),
-    to: fromTopic(log.topics?.[2]),
-  }));
+  return {
+    rpc,
+    transfers: logs.map(
+      (log: any): RawTransfer => ({
+        hash: log.transactionHash ?? null,
+        blockNumber: log.blockNumber ?? null,
+        timestamp: timestamps.get(log.blockNumber) ?? null,
+        direction,
+        tokenContract: normalizeAddress(log.address) || null,
+        value: null,
+        rawValueHex: typeof log.data === "string" ? log.data : null,
+        asset: null,
+        category: "erc20",
+        from: fromTopic(log.topics?.[1]),
+        to: fromTopic(log.topics?.[2]),
+      })
+    ),
+  };
 }
 
-async function recentTokenContractLogs(rpc: string, contract: string) {
-  const logs = await scanRecentLogs(
-    rpc,
+async function recentTokenContractLogs(
+  chain: EvmWalletChain,
+  contract: string
+) {
+  const { logs, rpc } = await scanRecentLogs(
+    chain,
     { address: normalizeAddress(contract), topics: [TRANSFER_TOPIC] },
-    20
+    12
   );
-  const timestamps = await blockTimestampMap(rpc, logs);
+  const timestamps = await blockTimestampMap(chain, logs, rpc);
 
-  return logs.map((log: any): RawTransfer => ({
-    hash: log.transactionHash ?? null,
-    blockNumber: log.blockNumber ?? null,
-    timestamp: timestamps.get(log.blockNumber) ?? null,
-    direction: "contract",
-    tokenContract: normalizeAddress(contract),
-    value: null,
-    rawValueHex: typeof log.data === "string" ? log.data : null,
-    asset: null,
-    category: "erc20",
-    from: fromTopic(log.topics?.[1]),
-    to: fromTopic(log.topics?.[2]),
-  }));
+  return {
+    rpc,
+    transfers: logs.map(
+      (log: any): RawTransfer => ({
+        hash: log.transactionHash ?? null,
+        blockNumber: log.blockNumber ?? null,
+        timestamp: timestamps.get(log.blockNumber) ?? null,
+        direction: "contract",
+        tokenContract: normalizeAddress(contract),
+        value: null,
+        rawValueHex: typeof log.data === "string" ? log.data : null,
+        asset: null,
+        category: "erc20",
+        from: fromTopic(log.topics?.[1]),
+        to: fromTopic(log.topics?.[2]),
+      })
+    ),
+  };
 }
 
 function decodeAbiString(hex?: string | null) {
@@ -424,9 +603,17 @@ function decodeAbiString(hex?: string | null) {
     }
 
     if (raw.length >= 128) {
-      const len = parseInt(raw.slice(64, 128), 16);
-      const data = raw.slice(128, 128 + len * 2);
-      return Buffer.from(data, "hex").toString("utf8").replace(/\0+$/g, "").trim() || null;
+      const offset = parseInt(raw.slice(0, 64), 16) * 2;
+      const lenStart = offset;
+      const dataStart = lenStart + 64;
+      const len = parseInt(raw.slice(lenStart, dataStart), 16);
+      const data = raw.slice(dataStart, dataStart + len * 2);
+      return (
+        Buffer.from(data, "hex")
+          .toString("utf8")
+          .replace(/\0+$/g, "")
+          .trim() || null
+      );
     }
   } catch {
     return null;
@@ -435,30 +622,67 @@ function decodeAbiString(hex?: string | null) {
   return null;
 }
 
-async function tokenMeta(rpc: string, chain: EvmWalletChain, contract: string): Promise<TokenMeta> {
+async function tokenMeta(
+  chain: EvmWalletChain,
+  contract: string,
+  preferred?: string | null
+): Promise<TokenMeta> {
   const canonical = VERIFIED_TOKENS[chain][contract];
   let symbol = canonical?.symbol ?? "";
   let name = canonical?.name ?? null;
-  let decimals: number | null = null;
+  let decimals: number | null = canonical?.decimals ?? null;
+  let currentPreferred = preferred ?? null;
 
   try {
-    const [symbolHex, nameHex, decimalsHex] = await Promise.all([
-      jsonRpc(rpc, "eth_call", [{ to: contract, data: "0x95d89b41" }, "latest"]),
-      jsonRpc(rpc, "eth_call", [{ to: contract, data: "0x06fdde03" }, "latest"]),
-      jsonRpc(rpc, "eth_call", [{ to: contract, data: "0x313ce567" }, "latest"]),
-    ]);
-
-    symbol = decodeAbiString(symbolHex)?.toUpperCase() || symbol;
-    name = decodeAbiString(nameHex) || name;
-    decimals = decimalsHex ? hexToNumber(decimalsHex) : null;
+    const response = await rpcWithFallback(
+      chain,
+      "eth_call",
+      [{ to: contract, data: "0x313ce567" }, "latest"],
+      currentPreferred
+    );
+    currentPreferred = response.url;
+    const candidate = hexToNumber(response.result);
+    if (candidate >= 0 && candidate <= 36) decimals = candidate;
   } catch {
-    // Metadata is optional; attribution and transfer evidence can still render.
+    // A verified canonical decimal value, when present, remains available.
   }
 
-  return { name, symbol: symbol || "UNKNOWN", decimals };
+  try {
+    const response = await rpcWithFallback(
+      chain,
+      "eth_call",
+      [{ to: contract, data: "0x95d89b41" }, "latest"],
+      currentPreferred
+    );
+    currentPreferred = response.url;
+    symbol = decodeAbiString(response.result)?.toUpperCase() || symbol;
+  } catch {
+    // Symbol is optional and canonical metadata remains available.
+  }
+
+  try {
+    const response = await rpcWithFallback(
+      chain,
+      "eth_call",
+      [{ to: contract, data: "0x06fdde03" }, "latest"],
+      currentPreferred
+    );
+    name = decodeAbiString(response.result) || name;
+  } catch {
+    // Name is optional and canonical metadata remains available.
+  }
+
+  return {
+    name,
+    symbol: symbol || "UNKNOWN",
+    decimals,
+  };
 }
 
-function movementContext(direction: Direction, attribution: WalletAttribution): MovementContext {
+function movementContext(
+  direction: Direction,
+  attribution: WalletAttribution
+): MovementContext {
   if (direction === "contract") return "unknown";
   if (attribution.entityType === "exchange") {
     return direction === "outgoing" ? "exchange_inflow" : "exchange_outflow";
@@ -474,10 +698,14 @@ export async function GET(request: NextRequest) {
   try {
     const wallet = request.nextUrl.searchParams.get("address")?.trim();
     const chainParam =
-      request.nextUrl.searchParams.get("chain")?.trim().toLowerCase() || "ethereum";
+      request.nextUrl.searchParams.get("chain")?.trim().toLowerCase() ||
+      "ethereum";
 
     if (!wallet) {
-      return NextResponse.json({ error: "An account address is required." }, { status: 400 });
+      return NextResponse.json(
+        { error: "An account address is required." },
+        { status: 400 }
+      );
     }
 
     if (!isAddress(wallet)) {
@@ -490,7 +718,8 @@ export async function GET(request: NextRequest) {
     if (!isChain(chainParam)) {
       return NextResponse.json(
         {
-          error: "This EVM network is not supported by the current PRISM scanner.",
+          error:
+            "This EVM network is not supported by the current PRISM scanner.",
           supportedWalletChains: EVM_WALLET_CHAINS,
         },
         { status: 400 }
@@ -516,10 +745,11 @@ export async function GET(request: NextRequest) {
 
     if (activityScope === "token-contract") {
       try {
-        rpc = await firstWorkingRpc(chain);
-        contractActivity = await recentTokenContractLogs(rpc, normalizedWallet);
+        const result = await recentTokenContractLogs(chain, normalizedWallet);
+        rpc = result.rpc;
+        contractActivity = result.transfers;
         providerMode = "public-rpc";
-        providerNote = `PRISM recognised this address as the verified ${scannedToken.name} token contract on ${config.name}. Instead of treating the token contract like a wallet, PRISM is reading recent Transfer events emitted by the contract.`;
+        providerNote = `PRISM recognised this address as the verified ${scannedToken.name} token contract on ${config.name}. PRISM is decoding recent Transfer events directly from the contract, including amount, sender, receiver, block and time when the network RPC exposes them.`;
       } catch {
         providerMode = "limited";
         providerNote = `${config.name} token-contract event history is temporarily unavailable. Verified project attribution remains available.`;
@@ -532,24 +762,25 @@ export async function GET(request: NextRequest) {
             alchemyTransfers(apiKey, chain, wallet, "outgoing"),
           ]);
           providerMode = "alchemy";
-        } catch (error) {
-          providerNote =
-            error instanceof Error ? error.message : "Primary network adapter unavailable.";
+        } catch {
+          providerMode = "limited";
         }
       }
 
       if (providerMode !== "alchemy") {
         try {
-          rpc = await firstWorkingRpc(chain);
-          [incoming, outgoing] = await Promise.all([
-            recentTransferLogs(rpc, wallet, "incoming"),
-            recentTransferLogs(rpc, wallet, "outgoing"),
+          const [incomingResult, outgoingResult] = await Promise.all([
+            recentTransferLogs(chain, wallet, "incoming"),
+            recentTransferLogs(chain, wallet, "outgoing"),
           ]);
+          incoming = incomingResult.transfers;
+          outgoing = outgoingResult.transfers;
+          rpc = incomingResult.rpc || outgoingResult.rpc;
           providerMode = "public-rpc";
-          providerNote = `PRISM automatically switched to a public ${config.name} RPC because the primary provider was unavailable for this network. Recent ERC-20 activity is shown where the public RPC exposes it.`;
+          providerNote = `PRISM automatically switched to a public ${config.name} RPC. Recent ERC-20 activity is decoded directly from on-chain Transfer events.`;
         } catch {
           providerMode = "limited";
-          providerNote = `${config.name} live transfer history is temporarily unavailable. Verified project attribution remains available, and PRISM will not expose provider setup errors to users.`;
+          providerNote = `${config.name} live transfer history is temporarily unavailable. Verified project attribution remains available.`;
         }
       }
     }
@@ -564,12 +795,12 @@ export async function GET(request: NextRequest) {
     ) as string[];
     const metaMap = new Map<string, TokenMeta>();
 
-    if (rpc && contracts.length) {
+    if (contracts.length) {
       const pairs = await Promise.all(
-        contracts.slice(0, 20).map(async (contract) => [
-          contract,
-          await tokenMeta(rpc!, chain, contract),
-        ] as const)
+        contracts.slice(0, 20).map(async (contract) => {
+          const meta = await tokenMeta(chain, contract, rpc);
+          return [contract, meta] as const;
+        })
       );
       pairs.forEach(([contract, meta]) => metaMap.set(contract, meta));
     }
@@ -587,10 +818,15 @@ export async function GET(request: NextRequest) {
         canonical?.name ||
         meta?.name ||
         (t.category === "external" ? config.nativeName : null);
+      const decimals = canonical?.decimals ?? meta?.decimals ?? null;
       const verification: VerificationStatus =
-        t.category === "external" ? "native" : canonical ? "verified" : "unverified";
+        t.category === "external"
+          ? "native"
+          : canonical
+          ? "verified"
+          : "unverified";
       const resolvedValue =
-        t.value ?? decodeTokenAmount(t.rawValueHex, meta?.decimals ?? null);
+        t.value ?? decodeTokenAmount(t.rawValueHex, decimals);
 
       const fromAttribution = getWalletAttribution(t.from);
       const toAttribution = getWalletAttribution(t.to);
@@ -613,19 +849,28 @@ export async function GET(request: NextRequest) {
           : getWalletAttribution(counterparty);
       const context = movementContext(t.direction, attribution);
 
-      const blockLabel = t.blockNumber
-        ? ` in block ${hexToNumber(t.blockNumber).toLocaleString("en-US")}`
+      const blockNumber = t.blockNumber ? hexToNumber(t.blockNumber) : null;
+      const blockLabel = blockNumber
+        ? ` in block ${blockNumber.toLocaleString("en-US")}`
         : "";
-      const contractEventNote = `${readableAmount(resolvedValue)} ${symbol} transferred from ${short(t.from)} to ${short(t.to)}${blockLabel}.`;
-      const accountNote = `${readableAmount(resolvedValue)} ${symbol} ${t.direction === "incoming" ? "entered" : "left"} this account${blockLabel}.`;
+      const contractEventNote = `${readableAmount(
+        resolvedValue
+      )} ${symbol} transferred from ${short(t.from)} to ${short(
+        t.to
+      )}${blockLabel}.`;
+      const accountNote = `${readableAmount(resolvedValue)} ${symbol} ${
+        t.direction === "incoming" ? "entered" : "left"
+      } this account${blockLabel}.`;
       const contractContext =
         attribution.entityType !== "unknown"
           ? `One side of this token transfer is publicly attributed as ${attribution.label}. This does not prove project ownership, buying, selling, or intent.`
-          : `From ${t.from || "unknown"} to ${t.to || "unknown"}. PRISM does not infer ownership or intent from the transfer alone.`;
+          : `From ${t.from || "unknown"} to ${
+              t.to || "unknown"
+            }. PRISM does not infer ownership or intent from the transfer alone.`;
 
       return {
         hash: t.hash,
-        blockNumber: t.blockNumber ? hexToNumber(t.blockNumber) : null,
+        blockNumber,
         timestamp: t.timestamp,
         direction: t.direction,
         asset: symbol,
@@ -648,8 +893,11 @@ export async function GET(request: NextRequest) {
         movementContext: context,
         explorerUrl: t.hash ? `${config.explorerBase}/tx/${t.hash}` : null,
         importance:
-          attribution.entityType !== "unknown" ? ("medium" as Importance) : ("low" as Importance),
-        type: t.category === "external" ? "native_transfer" : "token_transfer",
+          attribution.entityType !== "unknown"
+            ? ("medium" as Importance)
+            : ("low" as Importance),
+        type:
+          t.category === "external" ? "native_transfer" : "token_transfer",
         note: t.direction === "contract" ? contractEventNote : accountNote,
         contextExplanation:
           t.direction === "contract"
@@ -670,15 +918,25 @@ export async function GET(request: NextRequest) {
       })
       .slice(0, 12);
 
-    const incomingCount = activity.filter((t) => t.direction === "incoming").length;
-    const outgoingCount = activity.filter((t) => t.direction === "outgoing").length;
+    const incomingCount = activity.filter(
+      (t) => t.direction === "incoming"
+    ).length;
+    const outgoingCount = activity.filter(
+      (t) => t.direction === "outgoing"
+    ).length;
     const verified = activity.filter(
       (t) => t.verification === "verified" || t.verification === "native"
     );
-    const attributed = activity.filter((t) => t.attribution.entityType !== "unknown");
-    const exchanges = attributed.filter((t) => t.attribution.entityType === "exchange");
+    const attributed = activity.filter(
+      (t) => t.attribution.entityType !== "unknown"
+    );
+    const exchanges = attributed.filter(
+      (t) => t.attribution.entityType === "exchange"
+    );
     const projects = attributed.filter((t) =>
-      ["project", "treasury", "team", "investor"].includes(t.attribution.entityType)
+      ["project", "treasury", "team", "investor"].includes(
+        t.attribution.entityType
+      )
     );
     const assets = Array.from(new Set(verified.map((t) => t.asset)));
     const latest = activity[0];
@@ -702,7 +960,10 @@ export async function GET(request: NextRequest) {
       address: wallet,
       addressShort: short(wallet),
       scannerStatus: providerMode === "limited" ? "limited" : "ready",
-      provider: { mode: providerMode, note: providerNote || null },
+      provider: {
+        mode: providerMode,
+        note: providerNote || null,
+      },
       scannedWallet: {
         attribution: scannedWallet,
         isAttributed: scannedWallet.entityType !== "unknown",
@@ -712,7 +973,7 @@ export async function GET(request: NextRequest) {
           ? `${scannedWallet.label} identified on ${config.name}`
           : `Account identity is currently unknown on ${config.name}`,
         explanation: scannedToken
-          ? `PRISM verified this as the ${scannedToken.symbol} token contract on ${config.name}. Contract activity is shown from emitted token Transfer events, not treated as wallet inflows or outflows.`
+          ? `PRISM verified this as the ${scannedToken.symbol} token contract on ${config.name}. Contract activity is decoded from emitted token Transfer events.`
           : scannedWallet.entityType !== "unknown"
           ? scannedWallet.explanation
           : `PRISM has no reliable public attribution for this account on ${config.name}.`,
@@ -781,8 +1042,12 @@ export async function GET(request: NextRequest) {
         status: exchanges.length || projects.length ? "attention" : "normal",
         headline: activity.length
           ? activityScope === "token-contract"
-            ? `${activity.length} recent token Transfer event${activity.length === 1 ? "" : "s"} available for review`
-            : `${activity.length} recent transfer${activity.length === 1 ? "" : "s"} available for review`
+            ? `${activity.length} recent token Transfer event${
+                activity.length === 1 ? "" : "s"
+              } available for review`
+            : `${activity.length} recent transfer${
+                activity.length === 1 ? "" : "s"
+              } available for review`
           : providerMode === "limited"
           ? activityScope === "token-contract"
             ? `Live token-contract event history is temporarily limited on ${config.name}`
@@ -812,7 +1077,8 @@ export async function GET(request: NextRequest) {
     console.error("PRISM wallet API error:", error);
     return NextResponse.json(
       {
-        error: "PRISM could not retrieve live account activity right now. Please try again shortly.",
+        error:
+          "PRISM could not retrieve live account activity right now. Please try again shortly.",
       },
       { status: 503 }
     );
