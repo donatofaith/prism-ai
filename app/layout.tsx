@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import ThemeToggle from "@/components/ThemeToggle";
 import UnlockIntelligenceConsole from "@/components/UnlockIntelligenceConsole";
 import MarketMoversConsole from "@/components/MarketMoversConsole";
+import MarketMoverInvestigationBridge from "@/components/MarketMoverInvestigationBridge";
 import RemovePerspectiveUI from "@/components/RemovePerspectiveUI";
 import "./globals.css";
 import "./theme.css";
@@ -46,6 +47,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col">
         {children}
         <MarketMoversConsole />
+        <MarketMoverInvestigationBridge />
         <UnlockIntelligenceConsole />
         <RemovePerspectiveUI />
         <ThemeToggle />
