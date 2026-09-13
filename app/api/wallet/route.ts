@@ -42,6 +42,7 @@ type RawTransfer = {
   direction: Direction;
   tokenContract: string | null;
   value: number | null;
+  rawValueHex: string | null;
   asset: string | null;
   category: "external" | "erc20";
   from: string;
@@ -188,6 +189,34 @@ function hexToNumber(hex?: string | null) {
   }
 }
 
+function decodeTokenAmount(rawValueHex: string | null, decimals: number | null) {
+  if (!rawValueHex || decimals === null || decimals < 0 || decimals > 36) return null;
+
+  try {
+    const raw = BigInt(rawValueHex);
+    const base = 10n ** BigInt(decimals);
+    const whole = raw / base;
+    const fraction = raw % base;
+    const fractionText = fraction
+      .toString()
+      .padStart(decimals, "0")
+      .replace(/0+$/, "")
+      .slice(0, 8);
+    const text = fractionText ? `${whole.toString()}.${fractionText}` : whole.toString();
+    const value = Number(text);
+    return Number.isFinite(value) ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+function readableAmount(value: number | null) {
+  if (value === null) return "An unknown amount of";
+  return new Intl.NumberFormat("en-US", {
+    maximumFractionDigits: 8,
+  }).format(value);
+}
+
 async function jsonRpc(url: string, method: string, params: unknown[], id = 1) {
   const response = await fetch(url, {
     method: "POST",
@@ -257,6 +286,7 @@ async function alchemyTransfers(
     direction,
     tokenContract: normalizeAddress(t.rawContract?.address) || null,
     value: typeof t.value === "number" ? t.value : null,
+    rawValueHex: null,
     asset: t.asset ?? null,
     category: t.category === "external" ? "external" : "erc20",
     from: t.from ?? "",
@@ -267,7 +297,7 @@ async function alchemyTransfers(
 async function scanRecentLogs(
   rpc: string,
   filter: { address?: string; topics: (string | null)[] },
-  maxResults = 50
+  maxResults = 20
 ) {
   const latestHex = await jsonRpc(rpc, "eth_blockNumber", []);
   const latest = hexToNumber(latestHex);
@@ -312,6 +342,26 @@ async function scanRecentLogs(
   return [] as any[];
 }
 
+async function blockTimestampMap(rpc: string, logs: any[]) {
+  const uniqueBlocks = Array.from(
+    new Set(logs.map((log) => log.blockNumber).filter(Boolean))
+  ).slice(0, 20) as string[];
+
+  const entries = await Promise.all(
+    uniqueBlocks.map(async (blockNumber) => {
+      try {
+        const block = await jsonRpc(rpc, "eth_getBlockByNumber", [blockNumber, false]);
+        const seconds = hexToNumber(block?.timestamp);
+        return [blockNumber, seconds ? new Date(seconds * 1000).toISOString() : null] as const;
+      } catch {
+        return [blockNumber, null] as const;
+      }
+    })
+  );
+
+  return new Map<string, string | null>(entries);
+}
+
 async function recentTransferLogs(
   rpc: string,
   wallet: string,
@@ -323,14 +373,16 @@ async function recentTransferLogs(
       : [TRANSFER_TOPIC, topicAddress(wallet)];
 
   const logs = await scanRecentLogs(rpc, { topics });
+  const timestamps = await blockTimestampMap(rpc, logs);
 
   return logs.map((log: any): RawTransfer => ({
     hash: log.transactionHash ?? null,
     blockNumber: log.blockNumber ?? null,
-    timestamp: null,
+    timestamp: timestamps.get(log.blockNumber) ?? null,
     direction,
     tokenContract: normalizeAddress(log.address) || null,
     value: null,
+    rawValueHex: typeof log.data === "string" ? log.data : null,
     asset: null,
     category: "erc20",
     from: fromTopic(log.topics?.[1]),
@@ -342,16 +394,18 @@ async function recentTokenContractLogs(rpc: string, contract: string) {
   const logs = await scanRecentLogs(
     rpc,
     { address: normalizeAddress(contract), topics: [TRANSFER_TOPIC] },
-    50
+    20
   );
+  const timestamps = await blockTimestampMap(rpc, logs);
 
   return logs.map((log: any): RawTransfer => ({
     hash: log.transactionHash ?? null,
     blockNumber: log.blockNumber ?? null,
-    timestamp: null,
+    timestamp: timestamps.get(log.blockNumber) ?? null,
     direction: "contract",
     tokenContract: normalizeAddress(contract),
     value: null,
+    rawValueHex: typeof log.data === "string" ? log.data : null,
     asset: null,
     category: "erc20",
     from: fromTopic(log.topics?.[1]),
@@ -535,6 +589,8 @@ export async function GET(request: NextRequest) {
         (t.category === "external" ? config.nativeName : null);
       const verification: VerificationStatus =
         t.category === "external" ? "native" : canonical ? "verified" : "unverified";
+      const resolvedValue =
+        t.value ?? decodeTokenAmount(t.rawValueHex, meta?.decimals ?? null);
 
       const fromAttribution = getWalletAttribution(t.from);
       const toAttribution = getWalletAttribution(t.to);
@@ -557,20 +613,24 @@ export async function GET(request: NextRequest) {
           : getWalletAttribution(counterparty);
       const context = movementContext(t.direction, attribution);
 
-      const contractEventNote = `${symbol} Transfer event observed on this verified token contract.`;
-      const accountNote = `${symbol} ${t.direction === "incoming" ? "entered" : "left"} this account.`;
+      const blockLabel = t.blockNumber
+        ? ` in block ${hexToNumber(t.blockNumber).toLocaleString("en-US")}`
+        : "";
+      const contractEventNote = `${readableAmount(resolvedValue)} ${symbol} transferred from ${short(t.from)} to ${short(t.to)}${blockLabel}.`;
+      const accountNote = `${readableAmount(resolvedValue)} ${symbol} ${t.direction === "incoming" ? "entered" : "left"} this account${blockLabel}.`;
       const contractContext =
         attribution.entityType !== "unknown"
           ? `One side of this token transfer is publicly attributed as ${attribution.label}. This does not prove project ownership, buying, selling, or intent.`
-          : `The token contract emitted a Transfer event from ${short(t.from)} to ${short(t.to)}. PRISM does not infer ownership or intent from the transfer alone.`;
+          : `From ${t.from || "unknown"} to ${t.to || "unknown"}. PRISM does not infer ownership or intent from the transfer alone.`;
 
       return {
         hash: t.hash,
+        blockNumber: t.blockNumber ? hexToNumber(t.blockNumber) : null,
         timestamp: t.timestamp,
         direction: t.direction,
         asset: symbol,
         assetName: name,
-        value: t.value,
+        value: resolvedValue,
         category: t.category,
         tokenContract: contract,
         verification,
