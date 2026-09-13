@@ -135,7 +135,8 @@ export async function GET(request: NextRequest) {
         events: [],
         provider: "NetSupply",
         providerUrl: "https://netsupply.org/unlocks",
-        message: "The unlock-data provider is temporarily unavailable. PRISM did not treat this as evidence that no unlock exists.",
+        message:
+          "The unlock-data provider is temporarily unavailable. PRISM did not treat this as evidence that no unlock exists.",
       });
     }
 
@@ -151,10 +152,8 @@ export async function GET(request: NextRequest) {
       matchesToken(record, coinId, symbol, name)
     );
 
-    const events: UnlockEvent[] = matchingRows
-      .map((record, index) => {
-        // NetSupply's current OpenAPI schema names the scheduled timestamp `occurs_at`.
-        // `release_on` is accepted as a compatibility fallback for older responses.
+    const events = matchingRows
+      .map<UnlockEvent | null>((record, index) => {
         const date = parseDate(record.occurs_at ?? record.release_on);
         if (!date || date.getTime() < now - 86_400_000) return null;
 
@@ -173,7 +172,7 @@ export async function GET(request: NextRequest) {
             ? (amount / estimatedCirculatingSupply) * 100
             : null;
 
-        return {
+        const event: UnlockEvent = {
           id: `${record.slug ?? symbol}-${date.toISOString()}-${index}`,
           date: date.toISOString(),
           daysUntil: Math.max(0, Math.ceil((date.getTime() - now) / 86_400_000)),
@@ -188,7 +187,9 @@ export async function GET(request: NextRequest) {
           source: "NetSupply",
           chain: record.chain ?? null,
           providerSlug: record.slug ?? null,
-        } satisfies UnlockEvent;
+        };
+
+        return event;
       })
       .filter((event): event is UnlockEvent => event !== null)
       .sort((a, b) => a.date.localeCompare(b.date));
@@ -237,7 +238,8 @@ export async function GET(request: NextRequest) {
       events: [],
       provider: "NetSupply",
       providerUrl: "https://netsupply.org/unlocks",
-      message: "PRISM could not retrieve the unlock schedule right now. This is a data-availability issue, not evidence that no unlock exists.",
+      message:
+        "PRISM could not retrieve the unlock schedule right now. This is a data-availability issue, not evidence that no unlock exists.",
     });
   }
 }
