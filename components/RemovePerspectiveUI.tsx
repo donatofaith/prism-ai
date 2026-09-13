@@ -36,9 +36,13 @@ function ensureUnlockHost() {
   section.removeAttribute("aria-hidden");
   section.dataset.prismUnlockSection = "true";
 
-  if (watchlist instanceof HTMLElement && watchlist.parentElement) {
-    if (section.parentElement !== watchlist.parentElement || section.nextElementSibling !== watchlist) {
-      watchlist.parentElement.insertBefore(section, watchlist);
+  if (watchlist instanceof HTMLElement) {
+    const watchlistParent = watchlist.parentElement;
+    if (
+      watchlistParent &&
+      (section.parentElement !== watchlistParent || section.nextElementSibling !== watchlist)
+    ) {
+      watchlistParent.insertBefore(section, watchlist);
     }
   }
 
@@ -79,13 +83,15 @@ function reorderNav(container: Element | null) {
     unlockButton.removeAttribute("aria-hidden");
   }
 
-  if (
-    unlockButton &&
-    watchlistButton &&
-    unlockButton.parentElement === watchlistButton.parentElement &&
-    unlockButton.nextElementSibling !== watchlistButton
-  ) {
-    watchlistButton.parentElement.insertBefore(unlockButton, watchlistButton);
+  if (unlockButton && watchlistButton) {
+    const navParent = watchlistButton.parentElement;
+    if (
+      navParent &&
+      unlockButton.parentElement === navParent &&
+      unlockButton.nextElementSibling !== watchlistButton
+    ) {
+      navParent.insertBefore(unlockButton, watchlistButton);
+    }
   }
 
   const visibleButtons = Array.from(
