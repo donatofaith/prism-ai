@@ -32,19 +32,21 @@ type NetSupplyUnlock = {
   slug?: string | null;
   chain?: string | null;
   amount?: string | number | null;
-  amount_base_units?: string | null;
-  decimals?: number | null;
   beneficiary_class?: string | null;
   source?: string | null;
-  license_class?: string | null;
+  enforced_by_contract?: boolean | null;
+  contract_enforced?: boolean | null;
 };
 
 type NetSupplyResponse = {
   data?: NetSupplyUnlock[];
-  meta?: Record<string, unknown>;
 };
 
-const NETSUPPLY_UNLOCKS_URL = "https://netsupply.org/api/v1/unlocks?limit=200";
+const NETSUPPLY_UNLOCKS_URL =
+  "https://netsupply.org/api/v1/unlocks?scope=scheduled&days=3650&limit=200";
+
+const CYSIC_SOURCE_URL = "https://docs.cysicfoundation.org/tokenomics";
+const CYSIC_SECONDARY_URL = "https://app.tokenomics.com/tokenomics/cysic/unlocks";
 
 function numberValue(value: unknown) {
   if (typeof value === "number" && Number.isFinite(value)) return value;
@@ -64,7 +66,7 @@ function normalize(value: string | null | undefined) {
 
 function classifyAllocation(label: string): AllocationType {
   const value = label.toLowerCase();
-  if (/team|founder|employee|contributor|advisor/.test(value)) return "team";
+  if (/team|founder|employee|contributor|advisor|insider/.test(value)) return "team";
   if (/investor|private|seed|venture|vc|strategic/.test(value)) return "investors";
   if (/treasury|foundation/.test(value)) return "treasury";
   if (/ecosystem|incentive|reward|liquidity/.test(value)) return "ecosystem";
@@ -104,6 +106,110 @@ function parseDate(value: string | null | undefined) {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+function addMonthsUtc(date: Date, months: number) {
+  return new Date(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + months, date.getUTCDate())
+  );
+}
+
+function enrichEvent(
+  event: Omit<
+    UnlockEvent,
+    | "daysUntil"
+    | "estimatedUsdValue"
+    | "estimatedPercentOfMarketCap"
+    | "estimatedPercentOfCirculatingSupply"
+  >,
+  price: number | null,
+  marketCap: number | null,
+  estimatedCirculatingSupply: number | null
+): UnlockEvent {
+  const date = new Date(event.date);
+  const amount = event.amount;
+  const estimatedUsdValue =
+    amount !== null && price !== null && price > 0 ? amount * price : null;
+  const estimatedPercentOfMarketCap =
+    estimatedUsdValue !== null && marketCap !== null && marketCap > 0
+      ? (estimatedUsdValue / marketCap) * 100
+      : null;
+  const estimatedPercentOfCirculatingSupply =
+    amount !== null &&
+    estimatedCirculatingSupply !== null &&
+    estimatedCirculatingSupply > 0
+      ? (amount / estimatedCirculatingSupply) * 100
+      : null;
+
+  return {
+    ...event,
+    daysUntil: Math.max(0, Math.ceil((date.getTime() - Date.now()) / 86_400_000)),
+    estimatedUsdValue,
+    estimatedPercentOfMarketCap,
+    estimatedPercentOfCirculatingSupply,
+  };
+}
+
+function buildCysicFallback(
+  price: number | null,
+  marketCap: number | null,
+  estimatedCirculatingSupply: number | null
+) {
+  // Cysic Foundation publishes these fixed vesting terms:
+  // Investors: 1-year cliff + 12-month linear vesting (23.62%).
+  // Contributors: 1-year cliff + 36-month linear vesting (12.11%).
+  // Foundation Treasury: 1-year cliff + 24-month linear vesting (8%).
+  // The exact TGE anchor used here is 11 Dec 2025, also published by Tokenomics.com.
+  // Ecosystem incentives are intentionally excluded because the Foundation describes
+  // them as dynamic distribution rather than a fixed calendar.
+  const firstFixedRelease = new Date(Date.UTC(2026, 11, 11));
+  const now = Date.now();
+  const events: UnlockEvent[] = [];
+
+  const investorsMonthly = 236_200_000 / 12;
+  const contributorsMonthly = 121_100_000 / 36;
+  const treasuryMonthly = 80_000_000 / 24;
+
+  for (let month = 0; month < 36; month += 1) {
+    const date = addMonthsUtc(firstFixedRelease, month);
+    if (date.getTime() < now - 86_400_000) continue;
+
+    let amount = contributorsMonthly;
+    const allocations = ["Contributors"];
+
+    if (month < 12) {
+      amount += investorsMonthly;
+      allocations.unshift("Investors");
+    }
+
+    if (month < 24) {
+      amount += treasuryMonthly;
+      allocations.push("Foundation Treasury");
+    }
+
+    events.push(
+      enrichEvent(
+        {
+          id: `cysic-${date.toISOString()}`,
+          date: date.toISOString(),
+          amount,
+          allocation: allocations.join(" + "),
+          allocationType: month < 12 ? "investors" : month < 24 ? "treasury" : "team",
+          basis:
+            "Modeled from the Cysic Foundation's published cliff and linear vesting terms. Dynamic ecosystem incentives are not included.",
+          contractEnforced: null,
+          source: "Cysic Foundation tokenomics",
+          chain: "multi-chain",
+          providerSlug: "cysic",
+        },
+        price,
+        marketCap,
+        estimatedCirculatingSupply
+      )
+    );
+  }
+
+  return events;
+}
+
 export async function GET(request: NextRequest) {
   const coinId = request.nextUrl.searchParams.get("id")?.trim() ?? "";
   const symbol = request.nextUrl.searchParams.get("symbol")?.trim() ?? "";
@@ -118,6 +224,14 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  const estimatedCirculatingSupply =
+    price !== null && price > 0 && marketCap !== null && marketCap > 0
+      ? marketCap / price
+      : null;
+
+  let providerRows: NetSupplyUnlock[] = [];
+  let providerAvailable = true;
+
   try {
     const response = await fetch(NETSUPPLY_UNLOCKS_URL, {
       cache: "no-store",
@@ -127,119 +241,114 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    if (!response.ok) {
-      return NextResponse.json({
-        token: { id: coinId, symbol, name },
-        available: false,
-        coverage: "provider_unavailable",
-        events: [],
-        provider: "NetSupply",
-        providerUrl: "https://netsupply.org/unlocks",
-        message:
-          "The unlock-data provider is temporarily unavailable. PRISM did not treat this as evidence that no unlock exists.",
-      });
+    if (response.ok) {
+      const payload = (await response.json()) as NetSupplyResponse;
+      providerRows = Array.isArray(payload.data) ? payload.data : [];
+    } else {
+      providerAvailable = false;
     }
+  } catch {
+    providerAvailable = false;
+  }
 
-    const payload = (await response.json()) as NetSupplyResponse;
-    const rows = Array.isArray(payload.data) ? payload.data : [];
-    const now = Date.now();
-    const estimatedCirculatingSupply =
-      price !== null && price > 0 && marketCap !== null && marketCap > 0
-        ? marketCap / price
-        : null;
+  const matchingRows = providerRows.filter((record) =>
+    matchesToken(record, coinId, symbol, name)
+  );
 
-    const matchingRows = rows.filter((record) =>
-      matchesToken(record, coinId, symbol, name)
-    );
+  let events: UnlockEvent[] = matchingRows
+    .map((record, index): UnlockEvent | null => {
+      // NetSupply's machine-readable schema currently exposes `occurs_at`.
+      // `release_on` is retained as a compatibility fallback because its docs
+      // describe that name for scheduled releases.
+      const date = parseDate(record.occurs_at ?? record.release_on);
+      if (!date || date.getTime() < Date.now() - 86_400_000) return null;
 
-    const events = matchingRows
-      .map<UnlockEvent | null>((record, index) => {
-        const date = parseDate(record.occurs_at ?? record.release_on);
-        if (!date || date.getTime() < now - 86_400_000) return null;
+      const amount = numberValue(record.amount);
+      const allocation = record.beneficiary_class?.trim() || "Unspecified allocation";
 
-        const amount = numberValue(record.amount);
-        const allocation = record.beneficiary_class?.trim() || "Unspecified allocation";
-        const estimatedUsdValue =
-          amount !== null && price !== null && price > 0 ? amount * price : null;
-        const estimatedPercentOfMarketCap =
-          estimatedUsdValue !== null && marketCap !== null && marketCap > 0
-            ? (estimatedUsdValue / marketCap) * 100
-            : null;
-        const estimatedPercentOfCirculatingSupply =
-          amount !== null &&
-          estimatedCirculatingSupply !== null &&
-          estimatedCirculatingSupply > 0
-            ? (amount / estimatedCirculatingSupply) * 100
-            : null;
-
-        const event: UnlockEvent = {
+      return enrichEvent(
+        {
           id: `${record.slug ?? symbol}-${date.toISOString()}-${index}`,
           date: date.toISOString(),
-          daysUntil: Math.max(0, Math.ceil((date.getTime() - now) / 86_400_000)),
           amount,
-          estimatedUsdValue,
-          estimatedPercentOfMarketCap,
-          estimatedPercentOfCirculatingSupply,
           allocation,
           allocationType: classifyAllocation(allocation),
           basis: record.source ?? null,
-          contractEnforced: null,
+          contractEnforced:
+            typeof record.enforced_by_contract === "boolean"
+              ? record.enforced_by_contract
+              : typeof record.contract_enforced === "boolean"
+              ? record.contract_enforced
+              : null,
           source: "NetSupply",
           chain: record.chain ?? null,
           providerSlug: record.slug ?? null,
-        };
+        },
+        price,
+        marketCap,
+        estimatedCirculatingSupply
+      );
+    })
+    .filter((event): event is UnlockEvent => event !== null)
+    .sort((a, b) => a.date.localeCompare(b.date));
 
-        return event;
-      })
-      .filter((event): event is UnlockEvent => event !== null)
-      .sort((a, b) => a.date.localeCompare(b.date));
+  let provider = "NetSupply";
+  let providerUrl = "https://netsupply.org/unlocks";
+  let coverage: "matched" | "modeled" | "not_tracked" | "provider_unavailable" =
+    matchingRows.length > 0
+      ? "matched"
+      : providerAvailable
+      ? "not_tracked"
+      : "provider_unavailable";
 
-    const next = events[0] ?? null;
-    const teamOrInvestorEvents = events.filter(
-      (event) => event.allocationType === "team" || event.allocationType === "investors"
-    );
+  const isCysic =
+    normalize(symbol) === "cys" ||
+    normalize(coinId) === "cysic" ||
+    normalize(name) === "cysic";
 
-    return NextResponse.json({
-      token: { id: coinId, symbol, name },
-      available: events.length > 0,
-      coverage: matchingRows.length > 0 ? "matched" : "not_tracked",
-      provider: "NetSupply",
-      providerUrl: "https://netsupply.org/unlocks",
-      lastCheckedAt: new Date().toISOString(),
-      next,
-      events: events.slice(0, 12),
-      summary: {
-        eventCount: events.length,
-        teamOrInvestorEventCount: teamOrInvestorEvents.length,
-        nextImpactSize: impactLabel(next?.estimatedPercentOfMarketCap ?? null),
-        nextAllocationType: next?.allocationType ?? null,
-      },
-      message:
-        events.length > 0
-          ? null
-          : matchingRows.length > 0
-          ? "This token is recognised by the provider, but no future release is currently listed in the returned schedule."
-          : "This token is not currently covered by the connected unlock dataset. PRISM cannot infer that no vesting or future release exists.",
-      methodology: {
-        valuation:
-          "Estimated USD values use the token's current PRISM market price, not a future or transaction-time price.",
-        circulatingSupply:
-          "Estimated percent of circulating supply is derived from current market cap divided by current price when both are available.",
-        interpretation:
-          "A scheduled unlock describes token availability. It does not prove recipients will sell or predict a particular price direction.",
-      },
-    });
-  } catch (error) {
-    console.error("PRISM unlock intelligence error:", error);
-    return NextResponse.json({
-      token: { id: coinId, symbol, name },
-      available: false,
-      coverage: "provider_unavailable",
-      events: [],
-      provider: "NetSupply",
-      providerUrl: "https://netsupply.org/unlocks",
-      message:
-        "PRISM could not retrieve the unlock schedule right now. This is a data-availability issue, not evidence that no unlock exists.",
-    });
+  if (events.length === 0 && isCysic) {
+    events = buildCysicFallback(price, marketCap, estimatedCirculatingSupply);
+    provider = "Cysic Foundation tokenomics";
+    providerUrl = CYSIC_SOURCE_URL;
+    coverage = "modeled";
   }
+
+  const next = events[0] ?? null;
+  const teamOrInvestorEvents = events.filter(
+    (event) => event.allocationType === "team" || event.allocationType === "investors"
+  );
+
+  return NextResponse.json({
+    token: { id: coinId, symbol, name },
+    available: events.length > 0,
+    coverage,
+    provider,
+    providerUrl,
+    secondarySourceUrl: isCysic ? CYSIC_SECONDARY_URL : null,
+    lastCheckedAt: new Date().toISOString(),
+    next,
+    events: events.slice(0, 36),
+    summary: {
+      eventCount: events.length,
+      teamOrInvestorEventCount: teamOrInvestorEvents.length,
+      nextImpactSize: impactLabel(next?.estimatedPercentOfMarketCap ?? null),
+      nextAllocationType: next?.allocationType ?? null,
+    },
+    message:
+      events.length > 0
+        ? coverage === "modeled"
+          ? "NetSupply does not currently cover this token, so PRISM modeled the fixed vesting calendar from the project's published tokenomics. Dynamic or discretionary distributions are excluded."
+          : null
+        : providerAvailable
+        ? "No future scheduled release for this token was returned by the connected unlock dataset. PRISM does not treat that as proof that no vesting exists."
+        : "The primary unlock-data provider is temporarily unavailable and PRISM has no verified fallback schedule for this token yet.",
+    methodology: {
+      valuation:
+        "Estimated USD values use the token's current PRISM market price, not a future or transaction-time price.",
+      circulatingSupply:
+        "Estimated percent of circulating supply is derived from current market cap divided by current price when both are available.",
+      interpretation:
+        "A scheduled unlock describes token availability. It does not prove recipients will sell or predict a particular price direction.",
+    },
+  });
 }
