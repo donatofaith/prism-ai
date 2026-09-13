@@ -1,5 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 
+type AllocationType =
+  | "team"
+  | "investors"
+  | "treasury"
+  | "ecosystem"
+  | "community"
+  | "unknown";
+
 type UnlockEvent = {
   id: string;
   date: string;
@@ -9,68 +17,40 @@ type UnlockEvent = {
   estimatedPercentOfMarketCap: number | null;
   estimatedPercentOfCirculatingSupply: number | null;
   allocation: string;
-  allocationType: "team" | "investors" | "treasury" | "ecosystem" | "community" | "unknown";
+  allocationType: AllocationType;
   basis: string | null;
   contractEnforced: boolean | null;
   source: string;
+  chain: string | null;
+  providerSlug: string | null;
 };
 
-type RawRecord = Record<string, unknown>;
+type NetSupplyUnlock = {
+  occurs_at?: string | null;
+  release_on?: string | null;
+  symbol?: string | null;
+  slug?: string | null;
+  chain?: string | null;
+  amount?: string | number | null;
+  amount_base_units?: string | null;
+  decimals?: number | null;
+  beneficiary_class?: string | null;
+  source?: string | null;
+  license_class?: string | null;
+};
 
-const NETSUPPLY_UNLOCKS_URL =
-  "https://netsupply.org/api/v1/unlocks?scope=scheduled&days=180&limit=500";
+type NetSupplyResponse = {
+  data?: NetSupplyUnlock[];
+  meta?: Record<string, unknown>;
+};
 
-function stringValue(value: unknown) {
-  return typeof value === "string" && value.trim() ? value.trim() : null;
-}
+const NETSUPPLY_UNLOCKS_URL = "https://netsupply.org/api/v1/unlocks?limit=200";
 
 function numberValue(value: unknown) {
   if (typeof value === "number" && Number.isFinite(value)) return value;
   if (typeof value === "string") {
-    const cleaned = value.replace(/,/g, "").trim();
-    if (!cleaned) return null;
-    const parsed = Number(cleaned);
+    const parsed = Number(value.replace(/,/g, "").trim());
     return Number.isFinite(parsed) ? parsed : null;
-  }
-  return null;
-}
-
-function boolValue(value: unknown) {
-  if (typeof value === "boolean") return value;
-  if (value === "true" || value === 1 || value === "1") return true;
-  if (value === "false" || value === 0 || value === "0") return false;
-  return null;
-}
-
-function nested(record: RawRecord, path: string[]) {
-  let current: unknown = record;
-  for (const part of path) {
-    if (!current || typeof current !== "object") return undefined;
-    current = (current as Record<string, unknown>)[part];
-  }
-  return current;
-}
-
-function firstString(record: RawRecord, paths: string[][]) {
-  for (const path of paths) {
-    const value = stringValue(nested(record, path));
-    if (value) return value;
-  }
-  return null;
-}
-
-function firstNumber(record: RawRecord, paths: string[][]) {
-  for (const path of paths) {
-    const value = numberValue(nested(record, path));
-    if (value !== null) return value;
-  }
-  return null;
-}
-
-function firstBoolean(record: RawRecord, paths: string[][]) {
-  for (const path of paths) {
-    const value = boolValue(nested(record, path));
-    if (value !== null) return value;
   }
   return null;
 }
@@ -78,13 +58,13 @@ function firstBoolean(record: RawRecord, paths: string[][]) {
 function normalize(value: string | null | undefined) {
   return (value ?? "")
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
 
-function allocationType(label: string): UnlockEvent["allocationType"] {
+function classifyAllocation(label: string): AllocationType {
   const value = label.toLowerCase();
-  if (/team|founder|employee|contributor/.test(value)) return "team";
+  if (/team|founder|employee|contributor|advisor/.test(value)) return "team";
   if (/investor|private|seed|venture|vc|strategic/.test(value)) return "investors";
   if (/treasury|foundation/.test(value)) return "treasury";
   if (/ecosystem|incentive|reward|liquidity/.test(value)) return "ecosystem";
@@ -92,75 +72,36 @@ function allocationType(label: string): UnlockEvent["allocationType"] {
   return "unknown";
 }
 
-function parseDate(value: string | null) {
-  if (!value) return null;
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? null : date;
-}
-
-function extractRecords(payload: unknown): RawRecord[] {
-  if (Array.isArray(payload)) {
-    return payload.filter((item): item is RawRecord => Boolean(item) && typeof item === "object");
-  }
-
-  if (!payload || typeof payload !== "object") return [];
-  const object = payload as Record<string, unknown>;
-  const candidates = [object.data, object.unlocks, object.items, object.results, object.events];
-
-  for (const candidate of candidates) {
-    if (Array.isArray(candidate)) {
-      return candidate.filter(
-        (item): item is RawRecord => Boolean(item) && typeof item === "object"
-      );
-    }
-  }
-
-  return [];
-}
-
-function recordMatches(
-  record: RawRecord,
-  coinId: string,
-  symbol: string,
-  name: string
-) {
-  const recordSymbol = firstString(record, [
-    ["symbol"],
-    ["token_symbol"],
-    ["ticker"],
-    ["token", "symbol"],
-    ["asset", "symbol"],
-  ]);
-  const recordName = firstString(record, [
-    ["name"],
-    ["token_name"],
-    ["token", "name"],
-    ["asset", "name"],
-  ]);
-  const recordSlug = firstString(record, [
-    ["slug"],
-    ["token_slug"],
-    ["coingecko_id"],
-    ["gecko_id"],
-    ["token", "slug"],
-  ]);
-
-  const targetSymbol = normalize(symbol);
-  const targetName = normalize(name);
-  const targetId = normalize(coinId);
-
-  return (
-    (targetSymbol && normalize(recordSymbol) === targetSymbol) ||
-    (targetId && normalize(recordSlug) === targetId) ||
-    (targetName && normalize(recordName) === targetName)
-  );
-}
-
 function impactLabel(percentOfMarketCap: number | null) {
   if (percentOfMarketCap === null) return "unknown" as const;
   if (percentOfMarketCap >= 10) return "large" as const;
   if (percentOfMarketCap >= 3) return "meaningful" as const;
   return "limited" as const;
+}
+
+function matchesToken(
+  record: NetSupplyUnlock,
+  coinId: string,
+  symbol: string,
+  name: string
+) {
+  const recordSymbol = normalize(record.symbol);
+  const recordSlug = normalize(record.slug);
+  const targetSymbol = normalize(symbol);
+  const targetId = normalize(coinId);
+  const targetName = normalize(name);
+
+  return Boolean(
+    (targetSymbol && recordSymbol === targetSymbol) ||
+      (targetId && recordSlug === targetId) ||
+      (targetName && recordSlug === targetName)
+  );
+}
+
+function parseDate(value: string | null | undefined) {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
 }
 
 export async function GET(request: NextRequest) {
@@ -179,60 +120,46 @@ export async function GET(request: NextRequest) {
 
   try {
     const response = await fetch(NETSUPPLY_UNLOCKS_URL, {
-      headers: { accept: "application/json" },
-      next: { revalidate: 900 },
+      cache: "no-store",
+      headers: {
+        accept: "application/json",
+        "user-agent": "PRISM-Crypto-Intelligence/1.0",
+      },
     });
 
     if (!response.ok) {
       return NextResponse.json({
         token: { id: coinId, symbol, name },
         available: false,
+        coverage: "provider_unavailable",
         events: [],
         provider: "NetSupply",
-        providerUrl: "https://netsupply.org",
-        message: "Unlock schedule data is temporarily unavailable for this token.",
+        providerUrl: "https://netsupply.org/unlocks",
+        message: "The unlock-data provider is temporarily unavailable. PRISM did not treat this as evidence that no unlock exists.",
       });
     }
 
-    const payload = await response.json();
-    const records = extractRecords(payload).filter((record) =>
-      recordMatches(record, coinId, symbol, name)
-    );
-
+    const payload = (await response.json()) as NetSupplyResponse;
+    const rows = Array.isArray(payload.data) ? payload.data : [];
     const now = Date.now();
     const estimatedCirculatingSupply =
-      price && price > 0 && marketCap && marketCap > 0 ? marketCap / price : null;
+      price !== null && price > 0 && marketCap !== null && marketCap > 0
+        ? marketCap / price
+        : null;
 
-    const events: UnlockEvent[] = records
+    const matchingRows = rows.filter((record) =>
+      matchesToken(record, coinId, symbol, name)
+    );
+
+    const events: UnlockEvent[] = matchingRows
       .map((record, index) => {
-        const dateText = firstString(record, [
-          ["release_on"],
-          ["unlock_date"],
-          ["date"],
-          ["scheduled_at"],
-          ["releaseAt"],
-        ]);
-        const date = parseDate(dateText);
+        // NetSupply's current OpenAPI schema names the scheduled timestamp `occurs_at`.
+        // `release_on` is accepted as a compatibility fallback for older responses.
+        const date = parseDate(record.occurs_at ?? record.release_on);
         if (!date || date.getTime() < now - 86_400_000) return null;
 
-        const amount = firstNumber(record, [
-          ["amount_units"],
-          ["amount"],
-          ["unlock_amount"],
-          ["token_amount"],
-          ["tokens"],
-        ]);
-
-        const allocation =
-          firstString(record, [
-            ["allocation"],
-            ["allocation_name"],
-            ["category"],
-            ["recipient"],
-            ["label"],
-            ["bucket"],
-          ]) ?? "Unspecified allocation";
-
+        const amount = numberValue(record.amount);
+        const allocation = record.beneficiary_class?.trim() || "Unspecified allocation";
         const estimatedUsdValue =
           amount !== null && price !== null && price > 0 ? amount * price : null;
         const estimatedPercentOfMarketCap =
@@ -240,12 +167,14 @@ export async function GET(request: NextRequest) {
             ? (estimatedUsdValue / marketCap) * 100
             : null;
         const estimatedPercentOfCirculatingSupply =
-          amount !== null && estimatedCirculatingSupply !== null && estimatedCirculatingSupply > 0
+          amount !== null &&
+          estimatedCirculatingSupply !== null &&
+          estimatedCirculatingSupply > 0
             ? (amount / estimatedCirculatingSupply) * 100
             : null;
 
         return {
-          id: `${date.toISOString()}-${index}`,
+          id: `${record.slug ?? symbol}-${date.toISOString()}-${index}`,
           date: date.toISOString(),
           daysUntil: Math.max(0, Math.ceil((date.getTime() - now) / 86_400_000)),
           amount,
@@ -253,14 +182,12 @@ export async function GET(request: NextRequest) {
           estimatedPercentOfMarketCap,
           estimatedPercentOfCirculatingSupply,
           allocation,
-          allocationType: allocationType(allocation),
-          basis: firstString(record, [["basis"], ["schedule_basis"], ["source_basis"]]),
-          contractEnforced: firstBoolean(record, [
-            ["enforced_by_contract"],
-            ["contract_enforced"],
-            ["onchain_enforced"],
-          ]),
+          allocationType: classifyAllocation(allocation),
+          basis: record.source ?? null,
+          contractEnforced: null,
           source: "NetSupply",
+          chain: record.chain ?? null,
+          providerSlug: record.slug ?? null,
         } satisfies UnlockEvent;
       })
       .filter((event): event is UnlockEvent => event !== null)
@@ -274,8 +201,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       token: { id: coinId, symbol, name },
       available: events.length > 0,
+      coverage: matchingRows.length > 0 ? "matched" : "not_tracked",
       provider: "NetSupply",
-      providerUrl: "https://netsupply.org",
+      providerUrl: "https://netsupply.org/unlocks",
       lastCheckedAt: new Date().toISOString(),
       next,
       events: events.slice(0, 12),
@@ -285,13 +213,19 @@ export async function GET(request: NextRequest) {
         nextImpactSize: impactLabel(next?.estimatedPercentOfMarketCap ?? null),
         nextAllocationType: next?.allocationType ?? null,
       },
+      message:
+        events.length > 0
+          ? null
+          : matchingRows.length > 0
+          ? "This token is recognised by the provider, but no future release is currently listed in the returned schedule."
+          : "This token is not currently covered by the connected unlock dataset. PRISM cannot infer that no vesting or future release exists.",
       methodology: {
         valuation:
-          "Estimated USD values use the token's current PRISM market price, not the historical value at the unlock date.",
+          "Estimated USD values use the token's current PRISM market price, not a future or transaction-time price.",
         circulatingSupply:
           "Estimated percent of circulating supply is derived from current market cap divided by current price when both are available.",
         interpretation:
-          "An unlock increases token availability according to its schedule. It does not by itself prove that recipients will sell or that price will move in a particular direction.",
+          "A scheduled unlock describes token availability. It does not prove recipients will sell or predict a particular price direction.",
       },
     });
   } catch (error) {
@@ -299,10 +233,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       token: { id: coinId, symbol, name },
       available: false,
+      coverage: "provider_unavailable",
       events: [],
       provider: "NetSupply",
-      providerUrl: "https://netsupply.org",
-      message: "PRISM could not retrieve unlock schedule data right now.",
+      providerUrl: "https://netsupply.org/unlocks",
+      message: "PRISM could not retrieve the unlock schedule right now. This is a data-availability issue, not evidence that no unlock exists.",
     });
   }
 }
