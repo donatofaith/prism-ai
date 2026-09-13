@@ -1,0 +1,1 @@
+Force Vercel to redeploy the current main branch so the latest Account Intelligence transfer-decoding backend is served.
