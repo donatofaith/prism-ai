@@ -15,7 +15,12 @@ function replaceButtonLabel(button: HTMLButtonElement, label: string) {
   const spans = Array.from(button.querySelectorAll("span"));
   const candidate = spans.find((span) => {
     const text = span.textContent?.trim().toLowerCase() ?? "";
-    return text === "perspective" || text === "view" || text === "unlocks";
+    return (
+      text === "perspective" ||
+      text === "view" ||
+      text === "unlocks" ||
+      text.includes("saved investigations")
+    );
   });
 
   if (candidate) candidate.textContent = label;
@@ -23,24 +28,18 @@ function replaceButtonLabel(button: HTMLButtonElement, label: string) {
 
 function ensureUnlockHost() {
   const section = document.getElementById("perspective");
+  const watchlist = document.getElementById("watchlist");
+
   if (!(section instanceof HTMLElement)) return;
 
   section.style.display = "";
   section.removeAttribute("aria-hidden");
   section.dataset.prismUnlockSection = "true";
 
-  const watchlist = document.getElementById("watchlist");
-  const sectionParent = section.parentElement;
-  const watchlistParent = watchlist?.parentElement ?? null;
-
-  if (
-    watchlist instanceof HTMLElement &&
-    sectionParent &&
-    watchlistParent &&
-    sectionParent === watchlistParent &&
-    section.nextElementSibling !== watchlist
-  ) {
-    watchlistParent.insertBefore(section, watchlist);
+  if (watchlist instanceof HTMLElement && watchlist.parentElement) {
+    if (section.parentElement !== watchlist.parentElement || section.nextElementSibling !== watchlist) {
+      watchlist.parentElement.insertBefore(section, watchlist);
+    }
   }
 
   Array.from(section.children).forEach((child) => {
@@ -51,6 +50,7 @@ function ensureUnlockHost() {
   });
 
   let host = section.querySelector<HTMLElement>("[data-prism-unlock-host='true']");
+
   if (!host) {
     host = document.createElement("div");
     host.dataset.prismUnlockHost = "true";
@@ -63,10 +63,12 @@ function reorderNav(container: Element | null) {
   if (!container) return;
 
   const buttons = Array.from(container.querySelectorAll<HTMLButtonElement>("button"));
+
   const unlockButton = buttons.find((button) => {
     const text = button.textContent?.replace(/\s+/g, " ").trim().toLowerCase() ?? "";
     return text.includes("perspective") || text.includes("unlocks") || text === "03 view";
   });
+
   const watchlistButton = buttons.find((button) =>
     (button.textContent?.toLowerCase() ?? "").includes("watchlist")
   );
@@ -77,18 +79,13 @@ function reorderNav(container: Element | null) {
     unlockButton.removeAttribute("aria-hidden");
   }
 
-  const navParent = unlockButton?.parentElement ?? null;
-  const watchlistParent = watchlistButton?.parentElement ?? null;
-
   if (
     unlockButton &&
     watchlistButton &&
-    navParent &&
-    watchlistParent &&
-    navParent === watchlistParent &&
+    unlockButton.parentElement === watchlistButton.parentElement &&
     unlockButton.nextElementSibling !== watchlistButton
   ) {
-    navParent.insertBefore(unlockButton, watchlistButton);
+    watchlistButton.parentElement.insertBefore(unlockButton, watchlistButton);
   }
 
   const visibleButtons = Array.from(
@@ -109,6 +106,13 @@ function cleanPerspectiveUI() {
 
     if (text.includes("continue to prism perspective")) {
       replaceButtonLabel(button, "Continue to Unlock Intelligence");
+      button.dataset.prismUnlockContinue = "true";
+      return;
+    }
+
+    if (text.includes("review your saved investigations")) {
+      replaceButtonLabel(button, "Continue to Unlock Intelligence");
+      button.dataset.prismUnlockContinue = "true";
       return;
     }
 
@@ -130,7 +134,29 @@ export default function RemovePerspectiveUI() {
       frame = requestAnimationFrame(cleanPerspectiveUI);
     };
 
+    const handleClick = (event: MouseEvent) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+
+      const button = target.closest<HTMLButtonElement>("button");
+      if (!button) return;
+
+      const text = button.textContent?.replace(/\s+/g, " ").trim().toLowerCase() ?? "";
+
+      if (
+        button.dataset.prismUnlockContinue === "true" ||
+        text.includes("continue to unlock intelligence")
+      ) {
+        const section = document.getElementById("perspective");
+        if (!section) return;
+        event.preventDefault();
+        event.stopPropagation();
+        section.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    };
+
     run();
+
     const observer = new MutationObserver(run);
     observer.observe(document.body, {
       childList: true,
@@ -138,9 +164,12 @@ export default function RemovePerspectiveUI() {
       characterData: true,
     });
 
+    document.addEventListener("click", handleClick, true);
+
     return () => {
       cancelAnimationFrame(frame);
       observer.disconnect();
+      document.removeEventListener("click", handleClick, true);
     };
   }, []);
 
