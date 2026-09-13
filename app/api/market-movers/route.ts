@@ -17,7 +17,16 @@ type Mover = {
 };
 
 const STABLE_QUOTES = ["USDT", "USDC", "USD", "FDUSD"] as const;
-const EXCLUDED_BASES = new Set(["USDT", "USDC", "USDE", "DAI", "FDUSD", "TUSD", "USDP", "PYUSD"]);
+const EXCLUDED_BASES = new Set([
+  "USDT",
+  "USDC",
+  "USDE",
+  "DAI",
+  "FDUSD",
+  "TUSD",
+  "USDP",
+  "PYUSD",
+]);
 
 function num(value: unknown) {
   const parsed = typeof value === "number" ? value : Number(value);
@@ -34,12 +43,13 @@ function splitQuote(symbol: string) {
 }
 
 function rank(rows: Mover[], view: View) {
+  // Exchange gainers/losers pages can include low-volume markets. Do not apply an
+  // arbitrary liquidity floor here because it changes the exchange's own ranking.
   const eligible = rows.filter(
     (row) =>
       Number.isFinite(row.price) &&
       row.price > 0 &&
-      Number.isFinite(row.change24h) &&
-      (row.volume24hUsd === null || row.volume24hUsd >= 25_000)
+      Number.isFinite(row.change24h)
   );
 
   if (view === "losers") {
@@ -48,12 +58,33 @@ function rank(rows: Mover[], view: View) {
 
   if (view === "volume") {
     return eligible
-      .filter((row) => row.volume24hUsd !== null)
+      .filter((row) => row.volume24hUsd !== null && (row.volume24hUsd ?? 0) > 0)
       .sort((a, b) => (b.volume24hUsd ?? 0) - (a.volume24hUsd ?? 0))
       .slice(0, 30);
   }
 
   return eligible.sort((a, b) => b.change24h - a.change24h).slice(0, 30);
+}
+
+async function fetchFirstOk(urls: string[]) {
+  let lastStatus = 0;
+  for (const url of urls) {
+    try {
+      const response = await fetch(url, {
+        cache: "no-store",
+        headers: {
+          accept: "application/json",
+          "user-agent": "PRISM-Crypto-Intelligence/1.0",
+        },
+        signal: AbortSignal.timeout(8000),
+      });
+      lastStatus = response.status;
+      if (response.ok) return response;
+    } catch {
+      // Try the next official/public market-data endpoint.
+    }
+  }
+  throw new Error(`Market-data endpoints unavailable${lastStatus ? ` (${lastStatus})` : ""}`);
 }
 
 async function fetchAllMarket(): Promise<Mover[]> {
@@ -65,13 +96,9 @@ async function fetchAllMarket(): Promise<Mover[]> {
   url.searchParams.set("sparkline", "false");
   url.searchParams.set("price_change_percentage", "24h");
 
-  const response = await fetch(url, {
-    cache: "no-store",
-    headers: { accept: "application/json" },
-  });
-  if (!response.ok) throw new Error(`CoinGecko returned ${response.status}`);
-
+  const response = await fetchFirstOk([url.toString()]);
   const payload = (await response.json()) as Array<Record<string, unknown>>;
+
   return payload
     .map((coin): Mover | null => {
       const price = num(coin.current_price);
@@ -94,11 +121,15 @@ async function fetchAllMarket(): Promise<Mover[]> {
 }
 
 async function fetchBinance(): Promise<Mover[]> {
-  const response = await fetch("https://api.binance.com/api/v3/ticker/24hr", {
-    cache: "no-store",
-    headers: { accept: "application/json" },
-  });
-  if (!response.ok) throw new Error(`Binance returned ${response.status}`);
+  // Binance recommends data-api.binance.vision for public market data. Keep
+  // additional official API hosts as fallbacks because some cloud regions block
+  // api.binance.com even for public endpoints.
+  const response = await fetchFirstOk([
+    "https://data-api.binance.vision/api/v3/ticker/24hr",
+    "https://api1.binance.com/api/v3/ticker/24hr",
+    "https://api3.binance.com/api/v3/ticker/24hr",
+    "https://api.binance.com/api/v3/ticker/24hr",
+  ]);
   const payload = (await response.json()) as Array<Record<string, unknown>>;
 
   return payload
@@ -125,14 +156,18 @@ async function fetchBinance(): Promise<Mover[]> {
 }
 
 async function fetchBybit(): Promise<Mover[]> {
-  const response = await fetch("https://api.bybit.com/v5/market/tickers?category=spot", {
-    cache: "no-store",
-    headers: { accept: "application/json" },
-  });
-  if (!response.ok) throw new Error(`Bybit returned ${response.status}`);
+  // Both api.bybit.com and api.bytick.com are documented Bybit mainnet hosts.
+  const response = await fetchFirstOk([
+    "https://api.bybit.com/v5/market/tickers?category=spot",
+    "https://api.bytick.com/v5/market/tickers?category=spot",
+  ]);
   const payload = (await response.json()) as {
+    retCode?: number;
     result?: { list?: Array<Record<string, unknown>> };
   };
+  if (payload.retCode !== undefined && payload.retCode !== 0) {
+    throw new Error(`Bybit returned code ${payload.retCode}`);
+  }
 
   return (payload.result?.list ?? [])
     .map((ticker): Mover | null => {
@@ -147,6 +182,7 @@ async function fetchBybit(): Promise<Mover[]> {
         name: parsed.base,
         pair: parsed.pair,
         price,
+        // Bybit documents price24hPcnt as a decimal ratio (0.18 = 18%).
         change24h: rawChange * 100,
         volume24hUsd: num(ticker.turnover24h),
         marketCap: null,
@@ -158,23 +194,32 @@ async function fetchBybit(): Promise<Mover[]> {
 }
 
 async function fetchOkx(): Promise<Mover[]> {
-  const response = await fetch("https://www.okx.com/api/v5/market/tickers?instType=SPOT", {
-    cache: "no-store",
-    headers: { accept: "application/json" },
-  });
-  if (!response.ok) throw new Error(`OKX returned ${response.status}`);
-  const payload = (await response.json()) as { data?: Array<Record<string, unknown>> };
+  const response = await fetchFirstOk([
+    "https://www.okx.com/api/v5/market/tickers?instType=SPOT",
+  ]);
+  const payload = (await response.json()) as {
+    code?: string;
+    data?: Array<Record<string, unknown>>;
+  };
+  if (payload.code && payload.code !== "0") {
+    throw new Error(`OKX returned code ${payload.code}`);
+  }
 
   return (payload.data ?? [])
     .map((ticker): Mover | null => {
       const instId = String(ticker.instId ?? "");
       const [base = "", quote = ""] = instId.split("-");
-      if (!STABLE_QUOTES.includes(quote as (typeof STABLE_QUOTES)[number]) || EXCLUDED_BASES.has(base)) return null;
+      if (
+        !STABLE_QUOTES.includes(quote as (typeof STABLE_QUOTES)[number]) ||
+        EXCLUDED_BASES.has(base)
+      ) {
+        return null;
+      }
       const price = num(ticker.last);
       const open24h = num(ticker.open24h);
       if (price === null || open24h === null || open24h <= 0) return null;
       const change = ((price - open24h) / open24h) * 100;
-      const quoteVolume = num(ticker.volCcy24h);
+
       return {
         id: `okx-${instId}`,
         symbol: base,
@@ -182,7 +227,8 @@ async function fetchOkx(): Promise<Mover[]> {
         pair: `${base}/${quote}`,
         price,
         change24h: change,
-        volume24hUsd: quoteVolume,
+        // For spot, OKX volCcy24h is quote-currency turnover.
+        volume24hUsd: num(ticker.volCcy24h),
         marketCap: null,
         image: null,
         source: "okx",
@@ -192,11 +238,9 @@ async function fetchOkx(): Promise<Mover[]> {
 }
 
 async function fetchMexc(): Promise<Mover[]> {
-  const response = await fetch("https://api.mexc.com/api/v3/ticker/24hr", {
-    cache: "no-store",
-    headers: { accept: "application/json" },
-  });
-  if (!response.ok) throw new Error(`MEXC returned ${response.status}`);
+  const response = await fetchFirstOk([
+    "https://api.mexc.com/api/v3/ticker/24hr",
+  ]);
   const payload = (await response.json()) as Array<Record<string, unknown>>;
 
   return payload
@@ -207,10 +251,20 @@ async function fetchMexc(): Promise<Mover[]> {
       if (!parsed || price === null) return null;
 
       let change = num(ticker.priceChangePercent);
-      if (change === null) {
+      if (change !== null) {
+        // MEXC's Spot V3 API returns priceChangePercent as a ratio in its
+        // documented examples, e.g. 0.004 = 0.4%.
+        change *= 100;
+      } else {
         const open = num(ticker.openPrice);
         if (open === null || open <= 0) return null;
         change = ((price - open) / open) * 100;
+      }
+
+      let quoteVolume = num(ticker.quoteVolume);
+      if (quoteVolume === null) {
+        const baseVolume = num(ticker.volume);
+        quoteVolume = baseVolume !== null ? baseVolume * price : null;
       }
 
       return {
@@ -220,7 +274,7 @@ async function fetchMexc(): Promise<Mover[]> {
         pair: parsed.pair,
         price,
         change24h: change,
-        volume24hUsd: num(ticker.quoteVolume),
+        volume24hUsd: quoteVolume,
         marketCap: null,
         image: null,
         source: "mexc",
@@ -259,14 +313,17 @@ export async function GET(request: NextRequest) {
       methodology:
         source === "all"
           ? "Whole-market ranking from CoinGecko's current market snapshot."
-          : `Spot-market ranking calculated from ${source.toUpperCase()}'s own public 24-hour ticker data.`,
+          : `Spot-market ranking calculated directly from ${source.toUpperCase()}'s public 24-hour ticker snapshot without applying a PRISM liquidity cutoff.`,
       movers: rank(rows, view),
     });
   } catch (error) {
     console.error("PRISM market movers error:", error);
     return NextResponse.json(
       {
-        error: "This market source is temporarily unavailable. Try another source or refresh shortly.",
+        error:
+          source === "binance" || source === "bybit"
+            ? `${source === "binance" ? "Binance" : "Bybit"} public market data could not be reached from PRISM's server. PRISM tried the provider's documented fallback hosts.`
+            : "This market source is temporarily unavailable. Try another source or refresh shortly.",
         source,
         view,
       },
