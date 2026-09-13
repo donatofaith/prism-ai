@@ -14,7 +14,7 @@ type EvmWalletChain =
   | "bnb"
   | "avalanche";
 
-type Direction = "incoming" | "outgoing";
+type Direction = "incoming" | "outgoing" | "contract";
 type VerificationStatus = "native" | "verified" | "unverified" | "suspicious";
 type Importance = "high" | "medium" | "low";
 type MovementContext =
@@ -227,7 +227,7 @@ async function alchemyTransfers(
   apiKey: string,
   chain: EvmWalletChain,
   wallet: string,
-  direction: Direction
+  direction: Exclude<Direction, "contract">
 ) {
   const config = CHAIN_CONFIG[chain];
   const directionParams = direction === "incoming" ? { toAddress: wallet } : { fromAddress: wallet };
@@ -264,54 +264,99 @@ async function alchemyTransfers(
   }));
 }
 
-async function recentTransferLogs(rpc: string, wallet: string, direction: Direction) {
+async function scanRecentLogs(
+  rpc: string,
+  filter: { address?: string; topics: (string | null)[] },
+  maxResults = 50
+) {
   const latestHex = await jsonRpc(rpc, "eth_blockNumber", []);
   const latest = hexToNumber(latestHex);
-  const windows = [50000, 10000, 2000];
-  let logs: any[] = [];
-  let worked = false;
+  const chunkSizes = [10000, 5000, 2000];
+  const maxBlocksToInspect = 250000;
 
-  for (const window of windows) {
-    const from = Math.max(0, latest - window);
-    const topics =
-      direction === "incoming"
-        ? [TRANSFER_TOPIC, null, topicAddress(wallet)]
-        : [TRANSFER_TOPIC, topicAddress(wallet)];
+  for (const chunkSize of chunkSizes) {
+    const collected: any[] = [];
+    let cursor = latest;
+    let scanned = 0;
+    let providerAcceptedRange = false;
 
-    try {
-      logs = await jsonRpc(rpc, "eth_getLogs", [
-        {
-          fromBlock: `0x${from.toString(16)}`,
-          toBlock: "latest",
-          topics,
-        },
-      ]);
-      worked = true;
-      break;
-    } catch {
-      // Retry a smaller recent block window.
+    while (cursor >= 0 && scanned < maxBlocksToInspect && collected.length < maxResults) {
+      const from = Math.max(0, cursor - chunkSize + 1);
+
+      try {
+        const logs = await jsonRpc(rpc, "eth_getLogs", [
+          {
+            fromBlock: `0x${from.toString(16)}`,
+            toBlock: `0x${cursor.toString(16)}`,
+            ...filter,
+          },
+        ]);
+
+        providerAcceptedRange = true;
+        if (Array.isArray(logs) && logs.length) collected.push(...logs);
+        scanned += cursor - from + 1;
+        cursor = from - 1;
+      } catch {
+        providerAcceptedRange = false;
+        break;
+      }
+    }
+
+    if (providerAcceptedRange) {
+      return collected
+        .sort((a, b) => hexToNumber(b.blockNumber) - hexToNumber(a.blockNumber))
+        .slice(0, maxResults);
     }
   }
 
-  if (!worked) return [] as RawTransfer[];
+  return [] as any[];
+}
 
-  return logs.slice(-50).reverse().map((log: any): RawTransfer => {
-    const from = fromTopic(log.topics?.[1]);
-    const to = fromTopic(log.topics?.[2]);
+async function recentTransferLogs(
+  rpc: string,
+  wallet: string,
+  direction: Exclude<Direction, "contract">
+) {
+  const topics =
+    direction === "incoming"
+      ? [TRANSFER_TOPIC, null, topicAddress(wallet)]
+      : [TRANSFER_TOPIC, topicAddress(wallet)];
 
-    return {
-      hash: log.transactionHash ?? null,
-      blockNumber: log.blockNumber ?? null,
-      timestamp: null,
-      direction,
-      tokenContract: normalizeAddress(log.address) || null,
-      value: null,
-      asset: null,
-      category: "erc20",
-      from,
-      to,
-    };
-  });
+  const logs = await scanRecentLogs(rpc, { topics });
+
+  return logs.map((log: any): RawTransfer => ({
+    hash: log.transactionHash ?? null,
+    blockNumber: log.blockNumber ?? null,
+    timestamp: null,
+    direction,
+    tokenContract: normalizeAddress(log.address) || null,
+    value: null,
+    asset: null,
+    category: "erc20",
+    from: fromTopic(log.topics?.[1]),
+    to: fromTopic(log.topics?.[2]),
+  }));
+}
+
+async function recentTokenContractLogs(rpc: string, contract: string) {
+  const logs = await scanRecentLogs(
+    rpc,
+    { address: normalizeAddress(contract), topics: [TRANSFER_TOPIC] },
+    50
+  );
+
+  return logs.map((log: any): RawTransfer => ({
+    hash: log.transactionHash ?? null,
+    blockNumber: log.blockNumber ?? null,
+    timestamp: null,
+    direction: "contract",
+    tokenContract: normalizeAddress(contract),
+    value: null,
+    asset: null,
+    category: "erc20",
+    from: fromTopic(log.topics?.[1]),
+    to: fromTopic(log.topics?.[2]),
+  }));
 }
 
 function decodeAbiString(hex?: string | null) {
@@ -360,6 +405,7 @@ async function tokenMeta(rpc: string, chain: EvmWalletChain, contract: string): 
 }
 
 function movementContext(direction: Direction, attribution: WalletAttribution): MovementContext {
+  if (direction === "contract") return "unknown";
   if (attribution.entityType === "exchange") {
     return direction === "outgoing" ? "exchange_inflow" : "exchange_outflow";
   }
@@ -399,44 +445,66 @@ export async function GET(request: NextRequest) {
 
     const chain = chainParam;
     const config = CHAIN_CONFIG[chain];
+    const normalizedWallet = normalizeAddress(wallet);
     const apiKey = process.env.ALCHEMY_API_KEY;
     const scannedWallet = getWalletAttribution(wallet);
+    const scannedToken = VERIFIED_TOKENS[chain][normalizedWallet];
+    const activityScope: "account" | "token-contract" = scannedToken
+      ? "token-contract"
+      : "account";
 
     let providerMode: "alchemy" | "public-rpc" | "limited" = "limited";
     let providerNote = "";
     let incoming: RawTransfer[] = [];
     let outgoing: RawTransfer[] = [];
+    let contractActivity: RawTransfer[] = [];
     let rpc: string | null = null;
 
-    if (apiKey) {
-      try {
-        [incoming, outgoing] = await Promise.all([
-          alchemyTransfers(apiKey, chain, wallet, "incoming"),
-          alchemyTransfers(apiKey, chain, wallet, "outgoing"),
-        ]);
-        providerMode = "alchemy";
-      } catch (error) {
-        providerNote =
-          error instanceof Error ? error.message : "Primary network adapter unavailable.";
-      }
-    }
-
-    if (providerMode !== "alchemy") {
+    if (activityScope === "token-contract") {
       try {
         rpc = await firstWorkingRpc(chain);
-        [incoming, outgoing] = await Promise.all([
-          recentTransferLogs(rpc, wallet, "incoming"),
-          recentTransferLogs(rpc, wallet, "outgoing"),
-        ]);
+        contractActivity = await recentTokenContractLogs(rpc, normalizedWallet);
         providerMode = "public-rpc";
-        providerNote = `PRISM automatically switched to a public ${config.name} RPC because the primary provider was unavailable for this network. Recent ERC-20 activity is shown where the public RPC exposes it.`;
+        providerNote = `PRISM recognised this address as the verified ${scannedToken.name} token contract on ${config.name}. Instead of treating the token contract like a wallet, PRISM is reading recent Transfer events emitted by the contract.`;
       } catch {
         providerMode = "limited";
-        providerNote = `${config.name} live transfer history is temporarily unavailable. Verified project attribution remains available, and PRISM will not expose provider setup errors to users.`;
+        providerNote = `${config.name} token-contract event history is temporarily unavailable. Verified project attribution remains available.`;
+      }
+    } else {
+      if (apiKey) {
+        try {
+          [incoming, outgoing] = await Promise.all([
+            alchemyTransfers(apiKey, chain, wallet, "incoming"),
+            alchemyTransfers(apiKey, chain, wallet, "outgoing"),
+          ]);
+          providerMode = "alchemy";
+        } catch (error) {
+          providerNote =
+            error instanceof Error ? error.message : "Primary network adapter unavailable.";
+        }
+      }
+
+      if (providerMode !== "alchemy") {
+        try {
+          rpc = await firstWorkingRpc(chain);
+          [incoming, outgoing] = await Promise.all([
+            recentTransferLogs(rpc, wallet, "incoming"),
+            recentTransferLogs(rpc, wallet, "outgoing"),
+          ]);
+          providerMode = "public-rpc";
+          providerNote = `PRISM automatically switched to a public ${config.name} RPC because the primary provider was unavailable for this network. Recent ERC-20 activity is shown where the public RPC exposes it.`;
+        } catch {
+          providerMode = "limited";
+          providerNote = `${config.name} live transfer history is temporarily unavailable. Verified project attribution remains available, and PRISM will not expose provider setup errors to users.`;
+        }
       }
     }
 
-    const combined = [...incoming, ...outgoing];
+    const combined =
+      activityScope === "token-contract"
+        ? contractActivity
+        : [...incoming, ...outgoing];
+
     const contracts = Array.from(
       new Set(combined.map((t) => t.tokenContract).filter(Boolean))
     ) as string[];
@@ -467,9 +535,34 @@ export async function GET(request: NextRequest) {
         (t.category === "external" ? config.nativeName : null);
       const verification: VerificationStatus =
         t.category === "external" ? "native" : canonical ? "verified" : "unverified";
-      const counterparty = t.direction === "incoming" ? t.from : t.to;
-      const attribution = getWalletAttribution(counterparty);
+
+      const fromAttribution = getWalletAttribution(t.from);
+      const toAttribution = getWalletAttribution(t.to);
+      const accountCounterparty = t.direction === "incoming" ? t.from : t.to;
+      const contractCounterparty =
+        fromAttribution.entityType !== "unknown"
+          ? t.from
+          : toAttribution.entityType !== "unknown"
+          ? t.to
+          : t.to || t.from;
+      const counterparty =
+        t.direction === "contract" ? contractCounterparty : accountCounterparty;
+      const attribution =
+        t.direction === "contract"
+          ? fromAttribution.entityType !== "unknown"
+            ? fromAttribution
+            : toAttribution.entityType !== "unknown"
+            ? toAttribution
+            : getWalletAttribution(counterparty)
+          : getWalletAttribution(counterparty);
       const context = movementContext(t.direction, attribution);
+
+      const contractEventNote = `${symbol} Transfer event observed on this verified token contract.`;
+      const accountNote = `${symbol} ${t.direction === "incoming" ? "entered" : "left"} this account.`;
+      const contractContext =
+        attribution.entityType !== "unknown"
+          ? `One side of this token transfer is publicly attributed as ${attribution.label}. This does not prove project ownership, buying, selling, or intent.`
+          : `The token contract emitted a Transfer event from ${short(t.from)} to ${short(t.to)}. PRISM does not infer ownership or intent from the transfer alone.`;
 
       return {
         hash: t.hash,
@@ -497,9 +590,11 @@ export async function GET(request: NextRequest) {
         importance:
           attribution.entityType !== "unknown" ? ("medium" as Importance) : ("low" as Importance),
         type: t.category === "external" ? "native_transfer" : "token_transfer",
-        note: `${symbol} ${t.direction === "incoming" ? "entered" : "left"} this account.`,
+        note: t.direction === "contract" ? contractEventNote : accountNote,
         contextExplanation:
-          attribution.entityType === "unknown"
+          t.direction === "contract"
+            ? contractContext
+            : attribution.entityType === "unknown"
             ? "PRISM does not currently have reliable public attribution for this counterparty."
             : `The counterparty is publicly attributed as ${attribution.label}.`,
       };
@@ -534,10 +629,15 @@ export async function GET(request: NextRequest) {
       (t) => t.movementContext === "exchange_outflow"
     ).length;
 
+    if (scannedToken && !assets.includes(scannedToken.symbol)) {
+      assets.push(scannedToken.symbol);
+    }
+
     return NextResponse.json({
       chain,
       chainName: config.name,
       walletScanner: "evm",
+      activityScope,
       supportedChains: EVM_WALLET_CHAINS,
       address: wallet,
       addressShort: short(wallet),
@@ -546,14 +646,16 @@ export async function GET(request: NextRequest) {
       scannedWallet: {
         attribution: scannedWallet,
         isAttributed: scannedWallet.entityType !== "unknown",
-        headline:
-          scannedWallet.entityType !== "unknown"
-            ? `${scannedWallet.label} identified on ${config.name}`
-            : `Account identity is currently unknown on ${config.name}`,
-        explanation:
-          scannedWallet.entityType !== "unknown"
-            ? scannedWallet.explanation
-            : `PRISM has no reliable public attribution for this account on ${config.name}.`,
+        headline: scannedToken
+          ? `${scannedToken.name} token contract identified on ${config.name}`
+          : scannedWallet.entityType !== "unknown"
+          ? `${scannedWallet.label} identified on ${config.name}`
+          : `Account identity is currently unknown on ${config.name}`,
+        explanation: scannedToken
+          ? `PRISM verified this as the ${scannedToken.symbol} token contract on ${config.name}. Contract activity is shown from emitted token Transfer events, not treated as wallet inflows or outflows.`
+          : scannedWallet.entityType !== "unknown"
+          ? scannedWallet.explanation
+          : `PRISM has no reliable public attribution for this account on ${config.name}.`,
       },
       summary: {
         totalTransfers: activity.length,
@@ -600,9 +702,13 @@ export async function GET(request: NextRequest) {
           ? `${attributed.length} publicly attributed interaction${
               attributed.length === 1 ? "" : "s"
             } detected`
+          : activityScope === "token-contract"
+          ? "No publicly attributed transfer parties detected in the current token-event window."
           : "No publicly attributed counterparties detected in the current activity window.",
         explanation: attributed.length
           ? "PRISM found activity involving addresses with public attribution evidence."
+          : activityScope === "token-contract"
+          ? "PRISM reviewed recent Transfer events emitted by the verified token contract and did not infer labels for unknown addresses."
           : "PRISM will not infer ownership where reliable public attribution is unavailable.",
         verifiedEntityInteractions: attributed.length,
         exchangeInflows,
@@ -614,12 +720,20 @@ export async function GET(request: NextRequest) {
       intelligence: {
         status: exchanges.length || projects.length ? "attention" : "normal",
         headline: activity.length
-          ? `${activity.length} recent transfer${activity.length === 1 ? "" : "s"} available for review`
+          ? activityScope === "token-contract"
+            ? `${activity.length} recent token Transfer event${activity.length === 1 ? "" : "s"} available for review`
+            : `${activity.length} recent transfer${activity.length === 1 ? "" : "s"} available for review`
           : providerMode === "limited"
-          ? `Live transfer history is temporarily limited on ${config.name}`
+          ? activityScope === "token-contract"
+            ? `Live token-contract event history is temporarily limited on ${config.name}`
+            : `Live transfer history is temporarily limited on ${config.name}`
+          : activityScope === "token-contract"
+          ? `No recent Transfer events were returned for this verified token contract on ${config.name}`
           : `No recent ERC-20 transfers were returned for this address on ${config.name}`,
         explanation:
-          providerMode === "alchemy"
+          activityScope === "token-contract"
+            ? providerNote
+            : providerMode === "alchemy"
             ? `PRISM analyzed activity through its primary ${config.name} provider.`
             : providerMode === "public-rpc"
             ? `PRISM used its automatic ${config.name} fallback adapter. Public-RPC mode focuses on recent ERC-20 transfer evidence.`
@@ -629,7 +743,9 @@ export async function GET(request: NextRequest) {
         verificationPolicy:
           "Token identity is verified by contract address on the selected network. Verification on one network is not inherited by another.",
         interpretationPolicy:
-          "Observed transfers and attributed relationships provide context only; they do not prove buying, selling, intent, or future price direction.",
+          activityScope === "token-contract"
+            ? "Token Transfer events describe observable contract activity. They do not prove project ownership, buying, selling, intent, or future price direction."
+            : "Observed transfers and attributed relationships provide context only; they do not prove buying, selling, intent, or future price direction.",
       },
     });
   } catch (error) {
