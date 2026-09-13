@@ -58,7 +58,7 @@ type MarketResponse = {
 };
 
 function formatUsd(value: number | null) {
-  if (value === null || !Number.isFinite(value)) return "N/A";
+  if (value === null || !Number.isFinite(value)) return "Not available";
   if (value >= 1_000_000_000) return `$${(value / 1_000_000_000).toFixed(2)}B`;
   if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(2)}M`;
   if (value >= 1_000) return `$${(value / 1_000).toFixed(1)}K`;
@@ -66,7 +66,7 @@ function formatUsd(value: number | null) {
 }
 
 function formatAmount(value: number | null) {
-  if (value === null || !Number.isFinite(value)) return "N/A";
+  if (value === null || !Number.isFinite(value)) return "Not available";
   if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(2)}B`;
   if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(2)}M`;
   if (value >= 1_000) return `${(value / 1_000).toFixed(1)}K`;
@@ -74,7 +74,7 @@ function formatAmount(value: number | null) {
 }
 
 function formatPercent(value: number | null) {
-  if (value === null || !Number.isFinite(value)) return "N/A";
+  if (value === null || !Number.isFinite(value)) return "Not available";
   if (Math.abs(value) < 0.01) return "<0.01%";
   return `${value.toFixed(value < 1 ? 2 : 1)}%`;
 }
@@ -103,9 +103,9 @@ function impactLabel(value?: UnlockResponse["summary"] extends infer T
     ? U
     : never
   : never) {
-  if (value === "large") return "Large relative size";
-  if (value === "meaningful") return "Meaningful relative size";
-  if (value === "limited") return "Limited relative size";
+  if (value === "large") return "Large release";
+  if (value === "meaningful") return "Meaningful release";
+  if (value === "limited") return "Smaller release";
   return "Size unavailable";
 }
 
@@ -121,11 +121,11 @@ function getSearchQuery() {
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-[#E4EAF0] bg-white/90 p-3.5 dark:border-[#2A3A4E] dark:bg-[#0C1725]/90 sm:p-4">
+    <div className="min-w-0 rounded-2xl border border-[#E4EAF0] bg-white/90 p-3.5 dark:border-[#2A3A4E] dark:bg-[#0C1725]/90 sm:p-4">
       <p className="text-[9px] font-bold uppercase tracking-[0.1em] text-[#8A99AB] dark:text-[#8294A8]">
         {label}
       </p>
-      <p className="mt-2 truncate text-sm font-bold text-[#101A2B] dark:text-white sm:text-base">
+      <p className="mt-2 break-words text-sm font-bold text-[#101A2B] dark:text-white sm:text-base">
         {value}
       </p>
     </div>
@@ -138,6 +138,7 @@ export default function UnlockIntelligenceConsole() {
   const [error, setError] = useState("");
   const [data, setData] = useState<UnlockResponse | null>(null);
   const [market, setMarket] = useState<MarketResponse | null>(null);
+  const [showAll, setShowAll] = useState(false);
 
   useEffect(() => {
     const resolveTarget = () => {
@@ -152,19 +153,51 @@ export default function UnlockIntelligenceConsole() {
   }, []);
 
   const nextUnlock = data?.next ?? data?.events?.[0] ?? null;
+  const visibleEvents = showAll ? data?.events ?? [] : (data?.events ?? []).slice(0, 5);
 
-  const nextSummary = useMemo(() => {
+  const beginnerSummary = useMemo(() => {
     if (!nextUnlock) return "";
+
     const timing =
       nextUnlock.daysUntil === 0
         ? "today"
         : `in ${nextUnlock.daysUntil} day${nextUnlock.daysUntil === 1 ? "" : "s"}`;
-    return `${nextUnlock.allocation} has a scheduled release ${timing}.`;
+
+    const amount = formatAmount(nextUnlock.amount);
+    const symbol = market?.symbol?.toUpperCase() ?? "tokens";
+    const recipient = allocationLabel(nextUnlock.allocationType);
+    const supply = formatPercent(nextUnlock.estimatedPercentOfCirculatingSupply);
+
+    return `${amount} ${symbol} are scheduled to become available ${timing}. The release is linked to ${recipient.toLowerCase()} and is about ${supply} of the currently circulating supply when that estimate is available.`;
+  }, [nextUnlock, market]);
+
+  const watchText = useMemo(() => {
+    if (!nextUnlock) return "";
+
+    const marketShare = nextUnlock.estimatedPercentOfMarketCap;
+    const circulatingShare = nextUnlock.estimatedPercentOfCirculatingSupply;
+
+    if (
+      (marketShare !== null && marketShare >= 10) ||
+      (circulatingShare !== null && circulatingShare >= 10)
+    ) {
+      return "This is a relatively large scheduled release. It may be worth watching project-linked wallet activity around the release date, while remembering that an unlock does not prove selling.";
+    }
+
+    if (
+      (marketShare !== null && marketShare >= 3) ||
+      (circulatingShare !== null && circulatingShare >= 3)
+    ) {
+      return "This release is meaningful relative to the token's current size. PRISM treats it as context to monitor, not as a prediction of price direction.";
+    }
+
+    return "The next release appears smaller relative to the token's current size. PRISM still keeps it visible as supply context, without treating it as a trading signal.";
   }, [nextUnlock]);
 
   async function runUnlockInvestigation() {
     const query = getSearchQuery();
     setError("");
+    setShowAll(false);
 
     if (!query) {
       setData(null);
@@ -180,6 +213,7 @@ export default function UnlockIntelligenceConsole() {
         cache: "no-store",
       });
       const marketPayload = await marketResponse.json();
+
       if (!marketResponse.ok) {
         throw new Error(marketPayload?.error || "PRISM could not resolve this token.");
       }
@@ -199,6 +233,7 @@ export default function UnlockIntelligenceConsole() {
         cache: "no-store",
       });
       const payload = (await response.json()) as UnlockResponse & { error?: string };
+
       if (!response.ok) {
         throw new Error(payload.error || "Unlock Intelligence is temporarily unavailable.");
       }
@@ -219,15 +254,15 @@ export default function UnlockIntelligenceConsole() {
   if (!target) return null;
 
   return createPortal(
-    <div className="mx-auto w-full max-w-[1180px]">
-      <div className="overflow-hidden rounded-[24px] border border-[#DDE5ED] bg-white shadow-[0_18px_55px_rgba(25,42,70,0.06)] dark:border-[#27384C] dark:bg-[#0E1A29]">
-        <div className="grid gap-0 lg:grid-cols-[0.82fr_1.18fr]">
-          <div className="border-b border-[#E8EDF2] p-5 dark:border-[#26364A] sm:p-7 lg:border-b-0 lg:border-r">
+    <div className="mx-auto w-full max-w-[1160px]">
+      <div className="overflow-hidden rounded-[22px] border border-[#DDE5ED] bg-white shadow-[0_18px_55px_rgba(25,42,70,0.06)] dark:border-[#27384C] dark:bg-[#0E1A29]">
+        <div className="grid lg:grid-cols-[0.72fr_1.28fr]">
+          <div className="border-b border-[#E8EDF2] p-5 dark:border-[#26364A] sm:p-6 lg:border-b-0 lg:border-r lg:p-7">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#FFF1D6] text-sm font-black text-[#A96300] dark:bg-[#3A2A14] dark:text-[#FFC66D]">
                 U
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#5A6FFF]">
                   Supply schedule
                 </p>
@@ -238,12 +273,12 @@ export default function UnlockIntelligenceConsole() {
             </div>
 
             <p className="mt-4 max-w-md text-sm leading-6 text-[#69788A] dark:text-[#A9B7C8]">
-              See the next scheduled release, who it is linked to, and its estimated size relative to the token&apos;s current market.
+              See when tokens are scheduled to become available, who the release is linked to, and how large it is relative to the token&apos;s current size.
             </p>
 
             {market && (
               <div className="mt-5 inline-flex max-w-full items-center gap-2 rounded-full border border-[#E1E7ED] bg-[#F8FAFC] px-3 py-2 text-xs text-[#526176] dark:border-[#2B3B4E] dark:bg-[#132132] dark:text-[#B8C5D3]">
-                <span className="h-2 w-2 rounded-full bg-[#16B8A6]" />
+                <span className="h-2 w-2 shrink-0 rounded-full bg-[#16B8A6]" />
                 <span className="truncate">
                   {market.name} ({market.symbol.toUpperCase()})
                 </span>
@@ -262,29 +297,43 @@ export default function UnlockIntelligenceConsole() {
                 ? "Refresh Unlock Intelligence"
                 : "Run Unlock Intelligence"}
             </button>
+
+            <div className="mt-5 rounded-2xl bg-[#F7F9FC] p-4 dark:bg-[#0A1522]">
+              <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#8290A2] dark:text-[#8294A8]">
+                What this section answers
+              </p>
+              <div className="mt-3 space-y-2 text-xs leading-5 text-[#5F6F83] dark:text-[#A9B7C8]">
+                <p>• When is the next scheduled release?</p>
+                <p>• How many tokens are involved?</p>
+                <p>• Who is the allocation linked to?</p>
+                <p>• How large is it relative to current supply and market cap?</p>
+              </div>
+            </div>
           </div>
 
-          <div className="min-w-0 p-4 sm:p-6 lg:p-7">
+          <div className="min-w-0 p-4 sm:p-5 lg:p-6">
             {loading ? (
-              <div className="flex min-h-[250px] items-center justify-center rounded-[20px] bg-[#F7F9FC] dark:bg-[#0A1522]">
+              <div className="flex min-h-[260px] items-center justify-center rounded-[18px] bg-[#F7F9FC] dark:bg-[#0A1522]">
                 <div className="px-5 text-center">
                   <div className="mx-auto h-7 w-7 animate-spin rounded-full border-[3px] border-[#465FFF]/15 border-t-[#465FFF]" />
                   <p className="mt-4 text-sm font-semibold text-[#0D1726] dark:text-white">
                     Checking scheduled releases
                   </p>
                   <p className="mt-2 text-xs text-[#78879A] dark:text-[#94A5B8]">
-                    PRISM is checking the primary calendar and verified fallback schedules.
+                    PRISM is checking available schedule data and verified project information.
                   </p>
                 </div>
               </div>
             ) : error ? (
-              <div className="rounded-[20px] border border-[#F0D0D0] bg-[#FFF7F7] p-5 dark:border-[#693838] dark:bg-[#301D22] sm:p-6">
-                <p className="font-semibold text-[#A83D3D] dark:text-[#FFB0B0]">Couldn&apos;t run Unlock Intelligence</p>
+              <div className="rounded-[18px] border border-[#F0D0D0] bg-[#FFF7F7] p-5 dark:border-[#693838] dark:bg-[#301D22] sm:p-6">
+                <p className="font-semibold text-[#A83D3D] dark:text-[#FFB0B0]">
+                  Unlock Intelligence could not run
+                </p>
                 <p className="mt-2 text-sm leading-6 text-[#A85A5A] dark:text-[#E8A6A6]">{error}</p>
               </div>
             ) : data?.available && nextUnlock ? (
               <div className="space-y-4">
-                <div className="rounded-[20px] bg-gradient-to-br from-[#F5F7FF] via-[#FBFCFF] to-[#F0FAF8] p-4 dark:from-[#17223A] dark:via-[#101C2B] dark:to-[#102B2B] sm:p-5">
+                <div className="rounded-[18px] bg-gradient-to-br from-[#F5F7FF] via-[#FBFCFF] to-[#F0FAF8] p-4 dark:from-[#17223A] dark:via-[#101C2B] dark:to-[#102B2B] sm:p-5">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0">
                       <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-[#7A899B] dark:text-[#93A3B5]">
@@ -294,7 +343,9 @@ export default function UnlockIntelligenceConsole() {
                         {formatDate(nextUnlock.date)}
                       </p>
                       <p className="mt-1 text-xs leading-5 text-[#69788A] dark:text-[#A9B7C8]">
-                        {nextSummary}
+                        {nextUnlock.daysUntil === 0
+                          ? "Scheduled for today"
+                          : `${nextUnlock.daysUntil} day${nextUnlock.daysUntil === 1 ? "" : "s"} away`}
                       </p>
                     </div>
                     <span className="w-fit rounded-full bg-[#FFF0D5] px-3 py-1.5 text-[9px] font-bold uppercase tracking-[0.08em] text-[#9A5A00] dark:bg-[#3A2B16] dark:text-[#FFC66D]">
@@ -307,15 +358,17 @@ export default function UnlockIntelligenceConsole() {
                       label={`Tokens${market?.symbol ? ` · ${market.symbol.toUpperCase()}` : ""}`}
                       value={formatAmount(nextUnlock.amount)}
                     />
-                    <Metric label="Est. value" value={formatUsd(nextUnlock.estimatedUsdValue)} />
+                    <Metric label="Estimated current value" value={formatUsd(nextUnlock.estimatedUsdValue)} />
                     <Metric label="Of market cap" value={formatPercent(nextUnlock.estimatedPercentOfMarketCap)} />
-                    <Metric label="Of circulating" value={formatPercent(nextUnlock.estimatedPercentOfCirculatingSupply)} />
+                    <Metric label="Of circulating supply" value={formatPercent(nextUnlock.estimatedPercentOfCirculatingSupply)} />
                   </div>
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="rounded-2xl border border-[#E4EAF0] p-4 dark:border-[#2A3A4E]">
-                    <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-[#8A99AB]">Allocation</p>
+                    <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-[#8A99AB]">
+                      Who is this linked to?
+                    </p>
                     <p className="mt-2 text-sm font-semibold leading-6 text-[#172235] dark:text-white">
                       {nextUnlock.allocation}
                     </p>
@@ -325,81 +378,122 @@ export default function UnlockIntelligenceConsole() {
                   </div>
 
                   <div className="rounded-2xl border border-[#E4EAF0] p-4 dark:border-[#2A3A4E]">
-                    <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-[#8A99AB]">Data basis</p>
-                    <p className="mt-2 text-xs leading-6 text-[#526176] dark:text-[#B8C5D3]">
+                    <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-[#8A99AB]">
+                      Schedule source
+                    </p>
+                    <p className="mt-2 text-sm font-semibold leading-6 text-[#172235] dark:text-white">
                       {data.coverage === "modeled"
-                        ? "Modeled from published cliff and linear vesting terms; dynamic distributions are excluded."
-                        : "Scheduled release returned by the connected unlock calendar."}
+                        ? "Published project tokenomics"
+                        : "Connected unlock calendar"}
+                    </p>
+                    <p className="mt-1 text-xs leading-5 text-[#718095] dark:text-[#9CACBE]">
+                      {data.coverage === "modeled"
+                        ? "PRISM modeled only the fixed vesting terms described by the project. Variable or discretionary distributions are not included."
+                        : "PRISM matched this token to a scheduled-release record from the connected data source."}
                     </p>
                   </div>
                 </div>
 
-                {data.events.length > 1 && (
-                  <details className="group overflow-hidden rounded-2xl border border-[#E4EAF0] dark:border-[#2A3A4E]">
-                    <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-3.5 text-sm font-semibold text-[#334257] dark:text-[#D2DCE7]">
-                      <span>Upcoming schedule</span>
-                      <span className="rounded-full bg-[#F1F4F8] px-2.5 py-1 text-[10px] text-[#708095] dark:bg-[#172537] dark:text-[#A9B7C8]">
-                        {data.events.length} events
-                      </span>
-                    </summary>
-                    <div className="max-h-[290px] overflow-y-auto border-t border-[#E9EEF3] dark:border-[#26364A]">
-                      {data.events.slice(0, 12).map((event) => (
-                        <div
-                          key={event.id}
-                          className="grid gap-1 border-b border-[#EEF2F5] px-4 py-3 last:border-b-0 dark:border-[#243347] sm:grid-cols-[130px_1fr_auto] sm:items-center sm:gap-3"
-                        >
-                          <span className="text-xs font-semibold text-[#172235] dark:text-white">
-                            {formatDate(event.date)}
-                          </span>
-                          <span className="truncate text-xs text-[#718095] dark:text-[#A9B7C8]">
-                            {event.allocation}
-                          </span>
-                          <span className="text-xs font-semibold text-[#405064] dark:text-[#CAD4E0]">
-                            {formatAmount(event.amount)} {market?.symbol?.toUpperCase()}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </details>
-                )}
+                <div className="grid gap-3 lg:grid-cols-2">
+                  <div className="rounded-2xl border border-[#DDE7F4] bg-[#F7FAFF] p-4 dark:border-[#2B3D55] dark:bg-[#101D2D]">
+                    <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-[#5A6FFF]">
+                      Beginner summary
+                    </p>
+                    <p className="mt-2 text-sm leading-6 text-[#405064] dark:text-[#C3CEDA]">
+                      {beginnerSummary}
+                    </p>
+                  </div>
 
-                <div className="flex flex-col gap-2 rounded-2xl bg-[#F8FAFC] px-4 py-3 text-[10px] leading-5 text-[#7C8B9E] dark:bg-[#0A1522] dark:text-[#8FA1B5] sm:flex-row sm:items-center sm:justify-between">
-                  <span>
-                    Source: {data.provider}. Current USD estimates are not future-price estimates.
-                  </span>
-                  {data.message && <span className="sm:max-w-[48%] sm:text-right">{data.message}</span>}
+                  <div className="rounded-2xl border border-[#DCEBE7] bg-[#F4FBF9] p-4 dark:border-[#27463F] dark:bg-[#102521]">
+                    <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-[#159786]">
+                      Why it may matter
+                    </p>
+                    <p className="mt-2 text-sm leading-6 text-[#405064] dark:text-[#C3CEDA]">
+                      {watchText}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-[#E4EAF0] dark:border-[#2A3A4E]">
+                  <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3.5">
+                    <div>
+                      <p className="text-sm font-semibold text-[#172235] dark:text-white">
+                        Upcoming schedule
+                      </p>
+                      <p className="mt-1 text-[11px] text-[#7B899A] dark:text-[#8FA0B4]">
+                        {data.events.length} scheduled event{data.events.length === 1 ? "" : "s"} available
+                      </p>
+                    </div>
+                    {data.events.length > 5 && (
+                      <button
+                        type="button"
+                        onClick={() => setShowAll((value) => !value)}
+                        className="rounded-full bg-[#F0F3F8] px-3 py-1.5 text-[10px] font-bold text-[#516175] transition hover:bg-[#E7EBF3] dark:bg-[#18283A] dark:text-[#B8C5D3]"
+                      >
+                        {showAll ? "Show less" : "Show all"}
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="max-h-[360px] overflow-y-auto border-t border-[#E8EDF2] dark:border-[#26364A]">
+                    {visibleEvents.map((event) => (
+                      <div
+                        key={event.id}
+                        className="grid gap-2 border-b border-[#EEF2F5] px-4 py-3 text-xs last:border-b-0 dark:border-[#223247] sm:grid-cols-[120px_1fr_auto] sm:items-center"
+                      >
+                        <span className="font-semibold text-[#172235] dark:text-white">
+                          {formatDate(event.date)}
+                        </span>
+                        <span className="min-w-0 break-words text-[#66768A] dark:text-[#A9B7C8]">
+                          {event.allocation}
+                        </span>
+                        <span className="font-semibold text-[#405064] dark:text-[#C3CEDA]">
+                          {formatAmount(event.amount)} {market?.symbol?.toUpperCase()}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="rounded-2xl bg-[#F8FAFC] px-4 py-3 text-[11px] leading-5 text-[#7B899A] dark:bg-[#0A1522] dark:text-[#8FA0B4]">
+                  <span className="font-semibold text-[#5E6C7E] dark:text-[#AAB7C6]">Evidence note:</span>{" "}
+                  A scheduled unlock means tokens may become available according to a published or indexed schedule. It does not prove that recipients will move or sell those tokens, and it does not predict price direction.
                 </div>
               </div>
             ) : data ? (
-              <div className="rounded-[20px] border border-[#DFE6ED] bg-[#F9FBFD] p-5 dark:border-[#2A3A4E] dark:bg-[#0A1522] sm:p-6">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-[#64748A] shadow-sm dark:bg-[#142235] dark:text-[#AAB8C8]">
+              <div className="rounded-[18px] border border-[#DDE4E9] bg-[#F8FAFC] p-5 dark:border-[#2B3A4D] dark:bg-[#0A1522] sm:p-6">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-[#69788A] shadow-sm dark:bg-[#152538] dark:text-[#A9B7C8]">
                   ◇
                 </div>
-                <p className="mt-4 text-base font-semibold text-[#172235] dark:text-white">
+                <p className="mt-4 text-base font-semibold text-[#0D1726] dark:text-white">
                   {data.coverage === "provider_unavailable"
-                    ? "The unlock provider is temporarily unavailable."
-                    : "No verified fixed schedule is available for this token yet."}
+                    ? "Schedule data is temporarily unavailable."
+                    : data.coverage === "not_tracked"
+                    ? "This token is not covered by the current unlock dataset."
+                    : "No future scheduled release was returned."}
                 </p>
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-[#718095] dark:text-[#A9B7C8]">
-                  {data.message ??
-                    "PRISM did not receive a verified future release. Missing coverage is not evidence that a token has no vesting schedule."}
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-[#69788A] dark:text-[#A9B7C8]">
+                  PRISM does not treat missing schedule data as proof that no vesting or future release exists. We only show unlock information when we can tie it to an indexed schedule or a verified published tokenomics source.
                 </p>
                 <button
                   type="button"
                   onClick={() => void runUnlockInvestigation()}
-                  className="mt-4 rounded-xl border border-[#D7DFE8] bg-white px-4 py-2.5 text-sm font-semibold text-[#334257] transition hover:bg-[#F4F7FA] dark:border-[#33465D] dark:bg-[#132132] dark:text-white dark:hover:bg-[#17283B]"
+                  className="mt-4 rounded-xl border border-[#DCE3EA] bg-white px-4 py-2.5 text-sm font-semibold text-[#172235] transition hover:bg-[#F4F6F8] dark:border-[#304258] dark:bg-[#132132] dark:text-white"
                 >
                   Check again
                 </button>
               </div>
             ) : (
-              <div className="flex min-h-[230px] items-center rounded-[20px] border border-dashed border-[#DCE4EC] bg-[#FAFBFD] p-5 dark:border-[#2A3A4E] dark:bg-[#0A1522] sm:p-6">
-                <div>
-                  <p className="text-sm font-semibold text-[#172235] dark:text-white">
-                    Ready when your token scan is complete
+              <div className="flex min-h-[260px] items-center justify-center rounded-[18px] border border-dashed border-[#D8E0E8] bg-[#FBFCFD] p-6 text-center dark:border-[#2A3B4F] dark:bg-[#0A1522]">
+                <div className="max-w-sm">
+                  <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-[#EEF1FF] text-[#465FFF] dark:bg-[#1B2850] dark:text-[#AAB5FF]">
+                    ↗
+                  </div>
+                  <p className="mt-4 text-sm font-semibold text-[#172235] dark:text-white">
+                    Run Unlock Intelligence for the scanned token
                   </p>
-                  <p className="mt-2 max-w-xl text-sm leading-6 text-[#718095] dark:text-[#A9B7C8]">
-                    Run Unlock Intelligence to check scheduled supply releases without leaving your PRISM investigation.
+                  <p className="mt-2 text-xs leading-5 text-[#7B899A] dark:text-[#8FA0B4]">
+                    PRISM will show the next release, estimated size, allocation, schedule source, and upcoming events when reliable data is available.
                   </p>
                 </div>
               </div>
