@@ -17,6 +17,7 @@ function replaceButtonLabel(button: HTMLButtonElement, label: string) {
     const text = span.textContent?.trim().toLowerCase() ?? "";
     return text === "perspective" || text === "view" || text === "unlocks";
   });
+
   if (candidate) candidate.textContent = label;
 }
 
@@ -28,10 +29,18 @@ function ensureUnlockHost() {
   section.removeAttribute("aria-hidden");
   section.dataset.prismUnlockSection = "true";
 
-  // Unlock Intelligence should sit immediately before Watchlist.
   const watchlist = document.getElementById("watchlist");
-  if (watchlist?.parentElement && section.parentElement === watchlist.parentElement) {
-    watchlist.parentElement.insertBefore(section, watchlist);
+  const sectionParent = section.parentElement;
+  const watchlistParent = watchlist?.parentElement ?? null;
+
+  if (
+    watchlist instanceof HTMLElement &&
+    sectionParent &&
+    watchlistParent &&
+    sectionParent === watchlistParent &&
+    section.nextElementSibling !== watchlist
+  ) {
+    watchlistParent.insertBefore(section, watchlist);
   }
 
   Array.from(section.children).forEach((child) => {
@@ -68,12 +77,18 @@ function reorderNav(container: Element | null) {
     unlockButton.removeAttribute("aria-hidden");
   }
 
+  const navParent = unlockButton?.parentElement ?? null;
+  const watchlistParent = watchlistButton?.parentElement ?? null;
+
   if (
     unlockButton &&
     watchlistButton &&
-    unlockButton.parentElement === watchlistButton.parentElement
+    navParent &&
+    watchlistParent &&
+    navParent === watchlistParent &&
+    unlockButton.nextElementSibling !== watchlistButton
   ) {
-    watchlistButton.parentElement.insertBefore(unlockButton, watchlistButton);
+    navParent.insertBefore(unlockButton, watchlistButton);
   }
 
   const visibleButtons = Array.from(
