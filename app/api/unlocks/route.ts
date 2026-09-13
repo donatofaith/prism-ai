@@ -42,9 +42,54 @@ type NetSupplyResponse = {
   data?: NetSupplyUnlock[];
 };
 
+type CmcMapItem = {
+  id?: number | string | null;
+  name?: string | null;
+  symbol?: string | null;
+  slug?: string | null;
+};
+
+type CmcQuoteItem = {
+  id?: number | string | null;
+  name?: string | null;
+  symbol?: string | null;
+  slug?: string | null;
+  circulating_supply?: number | string | null;
+  total_supply?: number | string | null;
+  max_supply?: number | string | null;
+  self_reported_circulating_supply?: number | string | null;
+  unlocked_circulating_supply?: number | string | null;
+  unlocked_market_cap?: number | string | null;
+  quote?: {
+    USD?: {
+      price?: number | string | null;
+      market_cap?: number | string | null;
+      fully_diluted_market_cap?: number | string | null;
+    };
+  } | null;
+};
+
+type SupplyContext = {
+  source: "CoinMarketCap";
+  sourceUrl: string;
+  cmcId: number | string;
+  name: string;
+  symbol: string;
+  slug: string;
+  circulatingSupply: number | null;
+  totalSupply: number | null;
+  maxSupply: number | null;
+  unlockedCirculatingSupply: number | null;
+  unlockedMarketCap: number | null;
+  percentCirculatingOfTotal: number | null;
+  percentUnlockedOfTotal: number | null;
+  fullyDilutedMarketCap: number | null;
+};
+
 const NETSUPPLY_UNLOCKS_URL =
   "https://netsupply.org/api/v1/unlocks?scope=scheduled&days=3650&limit=200";
 
+const CMC_PUBLIC_API = "https://pro-api.coinmarketcap.com/public-api";
 const CYSIC_SOURCE_URL = "https://docs.cysicfoundation.org/tokenomics";
 const CYSIC_SECONDARY_URL = "https://app.tokenomics.com/tokenomics/cysic/unlocks";
 
@@ -112,6 +157,151 @@ function addMonthsUtc(date: Date, months: number) {
   );
 }
 
+function extractCmcRows(payload: unknown): CmcMapItem[] {
+  if (!payload || typeof payload !== "object") return [];
+  const data = (payload as { data?: unknown }).data;
+
+  if (Array.isArray(data)) {
+    return data.filter(
+      (item): item is CmcMapItem => Boolean(item) && typeof item === "object"
+    );
+  }
+
+  if (data && typeof data === "object") {
+    return Object.values(data).flatMap((value) => {
+      if (Array.isArray(value)) {
+        return value.filter(
+          (item): item is CmcMapItem => Boolean(item) && typeof item === "object"
+        );
+      }
+      return value && typeof value === "object" ? [value as CmcMapItem] : [];
+    });
+  }
+
+  return [];
+}
+
+function extractCmcQuote(payload: unknown, cmcId: number | string): CmcQuoteItem | null {
+  if (!payload || typeof payload !== "object") return null;
+  const data = (payload as { data?: unknown }).data;
+
+  if (Array.isArray(data)) {
+    return (
+      (data.find(
+        (item) =>
+          item &&
+          typeof item === "object" &&
+          String((item as CmcQuoteItem).id ?? "") === String(cmcId)
+      ) as CmcQuoteItem | undefined) ??
+      ((data[0] as CmcQuoteItem | undefined) ?? null)
+    );
+  }
+
+  if (data && typeof data === "object") {
+    const record = data as Record<string, unknown>;
+    const direct = record[String(cmcId)];
+    if (direct && typeof direct === "object") return direct as CmcQuoteItem;
+
+    const firstObject = Object.values(record).find(
+      (value) => value && typeof value === "object" && !Array.isArray(value)
+    );
+    if (firstObject) return firstObject as CmcQuoteItem;
+  }
+
+  return null;
+}
+
+async function fetchCoinMarketCapSupplyContext(
+  coinId: string,
+  symbol: string,
+  name: string
+): Promise<SupplyContext | null> {
+  if (!symbol) return null;
+
+  try {
+    const mapUrl = new URL(`${CMC_PUBLIC_API}/v1/cryptocurrency/map`);
+    mapUrl.searchParams.set("symbol", symbol.toUpperCase());
+    mapUrl.searchParams.set("listing_status", "active,untracked");
+
+    const mapResponse = await fetch(mapUrl.toString(), {
+      cache: "no-store",
+      headers: { accept: "application/json" },
+    });
+
+    if (!mapResponse.ok) return null;
+
+    const mapPayload = await mapResponse.json();
+    const rows = extractCmcRows(mapPayload);
+    if (rows.length === 0) return null;
+
+    const targetId = normalize(coinId);
+    const targetName = normalize(name);
+    const targetSymbol = normalize(symbol);
+
+    const exact =
+      rows.find(
+        (item) =>
+          normalize(item.symbol) === targetSymbol &&
+          (normalize(item.slug) === targetId || normalize(item.name) === targetName)
+      ) ?? rows.find((item) => normalize(item.symbol) === targetSymbol) ?? rows[0];
+
+    if (exact.id === null || exact.id === undefined) return null;
+
+    const quoteUrl = new URL(`${CMC_PUBLIC_API}/v3/cryptocurrency/quotes/latest`);
+    quoteUrl.searchParams.set("id", String(exact.id));
+    quoteUrl.searchParams.set("convert", "USD");
+
+    const quoteResponse = await fetch(quoteUrl.toString(), {
+      cache: "no-store",
+      headers: { accept: "application/json" },
+    });
+
+    if (!quoteResponse.ok) return null;
+
+    const quotePayload = await quoteResponse.json();
+    const quote = extractCmcQuote(quotePayload, exact.id);
+    if (!quote) return null;
+
+    const circulatingSupply = numberValue(quote.circulating_supply);
+    const totalSupply = numberValue(quote.total_supply);
+    const maxSupply = numberValue(quote.max_supply);
+    const unlockedCirculatingSupply = numberValue(quote.unlocked_circulating_supply);
+    const unlockedMarketCap = numberValue(quote.unlocked_market_cap);
+    const fullyDilutedMarketCap = numberValue(quote.quote?.USD?.fully_diluted_market_cap);
+
+    const percentCirculatingOfTotal =
+      circulatingSupply !== null && totalSupply !== null && totalSupply > 0
+        ? (circulatingSupply / totalSupply) * 100
+        : null;
+
+    const percentUnlockedOfTotal =
+      unlockedCirculatingSupply !== null && totalSupply !== null && totalSupply > 0
+        ? (unlockedCirculatingSupply / totalSupply) * 100
+        : null;
+
+    const slug = quote.slug ?? exact.slug ?? coinId;
+
+    return {
+      source: "CoinMarketCap",
+      sourceUrl: `https://coinmarketcap.com/currencies/${slug}/`,
+      cmcId: exact.id,
+      name: quote.name ?? exact.name ?? name,
+      symbol: quote.symbol ?? exact.symbol ?? symbol,
+      slug,
+      circulatingSupply,
+      totalSupply,
+      maxSupply,
+      unlockedCirculatingSupply,
+      unlockedMarketCap,
+      percentCirculatingOfTotal,
+      percentUnlockedOfTotal,
+      fullyDilutedMarketCap,
+    };
+  } catch {
+    return null;
+  }
+}
+
 function enrichEvent(
   event: Omit<
     UnlockEvent,
@@ -153,13 +343,6 @@ function buildCysicFallback(
   marketCap: number | null,
   estimatedCirculatingSupply: number | null
 ) {
-  // Cysic Foundation publishes these fixed vesting terms:
-  // Investors: 1-year cliff + 12-month linear vesting (23.62%).
-  // Contributors: 1-year cliff + 36-month linear vesting (12.11%).
-  // Foundation Treasury: 1-year cliff + 24-month linear vesting (8%).
-  // The exact TGE anchor used here is 11 Dec 2025, also published by Tokenomics.com.
-  // Ecosystem incentives are intentionally excluded because the Foundation describes
-  // them as dynamic distribution rather than a fixed calendar.
   const firstFixedRelease = new Date(Date.UTC(2026, 11, 11));
   const now = Date.now();
   const events: UnlockEvent[] = [];
@@ -210,6 +393,31 @@ function buildCysicFallback(
   return events;
 }
 
+function readableSupplyMessage(context: SupplyContext | null) {
+  if (!context) return null;
+
+  const formatter = new Intl.NumberFormat("en-US", {
+    notation: "compact",
+    maximumFractionDigits: 2,
+  });
+
+  const circulating =
+    context.circulatingSupply !== null
+      ? `${formatter.format(context.circulatingSupply)} ${context.symbol.toUpperCase()} circulating`
+      : null;
+  const total =
+    context.totalSupply !== null
+      ? `${formatter.format(context.totalSupply)} ${context.symbol.toUpperCase()} total supply`
+      : null;
+  const ratio =
+    context.percentCirculatingOfTotal !== null
+      ? `${context.percentCirculatingOfTotal.toFixed(1)}% of total supply currently circulating`
+      : null;
+
+  const parts = [circulating, total, ratio].filter(Boolean);
+  return parts.length > 0 ? parts.join(" · ") : null;
+}
+
 export async function GET(request: NextRequest) {
   const coinId = request.nextUrl.searchParams.get("id")?.trim() ?? "";
   const symbol = request.nextUrl.searchParams.get("symbol")?.trim() ?? "";
@@ -228,6 +436,8 @@ export async function GET(request: NextRequest) {
     price !== null && price > 0 && marketCap !== null && marketCap > 0
       ? marketCap / price
       : null;
+
+  const cmcSupplyPromise = fetchCoinMarketCapSupplyContext(coinId, symbol, name);
 
   let providerRows: NetSupplyUnlock[] = [];
   let providerAvailable = true;
@@ -251,15 +461,13 @@ export async function GET(request: NextRequest) {
     providerAvailable = false;
   }
 
+  const supplyContext = await cmcSupplyPromise;
   const matchingRows = providerRows.filter((record) =>
     matchesToken(record, coinId, symbol, name)
   );
 
   let events: UnlockEvent[] = matchingRows
     .map((record, index): UnlockEvent | null => {
-      // NetSupply's machine-readable schema currently exposes `occurs_at`.
-      // `release_on` is retained as a compatibility fallback because its docs
-      // describe that name for scheduled releases.
       const date = parseDate(record.occurs_at ?? record.release_on);
       if (!date || date.getTime() < Date.now() - 86_400_000) return null;
 
@@ -286,7 +494,7 @@ export async function GET(request: NextRequest) {
         },
         price,
         marketCap,
-        estimatedCirculatingSupply
+        supplyContext?.circulatingSupply ?? estimatedCirculatingSupply
       );
     })
     .filter((event): event is UnlockEvent => event !== null)
@@ -307,7 +515,11 @@ export async function GET(request: NextRequest) {
     normalize(name) === "cysic";
 
   if (events.length === 0 && isCysic) {
-    events = buildCysicFallback(price, marketCap, estimatedCirculatingSupply);
+    events = buildCysicFallback(
+      price,
+      marketCap,
+      supplyContext?.circulatingSupply ?? estimatedCirculatingSupply
+    );
     provider = "Cysic Foundation tokenomics";
     providerUrl = CYSIC_SOURCE_URL;
     coverage = "modeled";
@@ -317,6 +529,34 @@ export async function GET(request: NextRequest) {
   const teamOrInvestorEvents = events.filter(
     (event) => event.allocationType === "team" || event.allocationType === "investors"
   );
+  const supplySummary = readableSupplyMessage(supplyContext);
+
+  const sourcesChecked = [
+    {
+      name: "NetSupply",
+      role: "Dated unlock schedules",
+      status: matchingRows.length > 0 ? "matched" : providerAvailable ? "checked" : "unavailable",
+    },
+    {
+      name: "CoinMarketCap",
+      role: "Token identity and current supply context",
+      status: supplyContext ? "matched" : "checked",
+    },
+    {
+      name: "CoinGecko",
+      role: "Current PRISM price and market-cap context",
+      status: price !== null || marketCap !== null ? "matched" : "checked",
+    },
+    ...(isCysic
+      ? [
+          {
+            name: "Cysic Foundation tokenomics",
+            role: "Published project vesting terms",
+            status: "matched",
+          },
+        ]
+      : []),
+  ];
 
   return NextResponse.json({
     token: { id: coinId, symbol, name },
@@ -328,6 +568,8 @@ export async function GET(request: NextRequest) {
     lastCheckedAt: new Date().toISOString(),
     next,
     events: events.slice(0, 36),
+    supplyContext,
+    sourcesChecked,
     summary: {
       eventCount: events.length,
       teamOrInvestorEventCount: teamOrInvestorEvents.length,
@@ -337,18 +579,20 @@ export async function GET(request: NextRequest) {
     message:
       events.length > 0
         ? coverage === "modeled"
-          ? "NetSupply does not currently cover this token, so PRISM modeled the fixed vesting calendar from the project's published tokenomics. Dynamic or discretionary distributions are excluded."
+          ? "PRISM found published project vesting terms and modeled only the fixed schedule. Dynamic or discretionary distributions are excluded."
           : null
+        : supplyContext
+        ? `PRISM checked dated schedule sources but could not verify a future unlock date for this token. CoinMarketCap still provides current supply context: ${supplySummary ?? "supply data is available"}. A gap between circulating and total supply is not automatically an unlock schedule; it can also reflect emissions, treasury holdings, staking, burns, or other non-circulating supply.`
         : providerAvailable
-        ? "No future scheduled release for this token was returned by the connected unlock dataset. PRISM does not treat that as proof that no vesting exists."
-        : "The primary unlock-data provider is temporarily unavailable and PRISM has no verified fallback schedule for this token yet.",
+        ? "PRISM checked the connected schedule sources but could not verify a future dated unlock for this token. Missing schedule data is not proof that no vesting exists."
+        : "The dated unlock provider is temporarily unavailable and PRISM could not verify a fallback schedule for this token right now.",
     methodology: {
       valuation:
         "Estimated USD values use the token's current PRISM market price, not a future or transaction-time price.",
       circulatingSupply:
-        "Estimated percent of circulating supply is derived from current market cap divided by current price when both are available.",
+        "PRISM prefers CoinMarketCap circulating-supply context when it resolves the same asset, then falls back to current market cap divided by current price.",
       interpretation:
-        "A scheduled unlock describes token availability. It does not prove recipients will sell or predict a particular price direction.",
+        "A scheduled unlock describes token availability. It does not prove recipients will sell or predict a particular price direction. Supply gaps are not treated as dated unlocks without schedule evidence.",
     },
   });
 }
