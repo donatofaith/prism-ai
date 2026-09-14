@@ -19,6 +19,8 @@ function replaceButtonLabel(button: HTMLButtonElement, label: string) {
       text === "perspective" ||
       text === "view" ||
       text === "unlocks" ||
+      text === "scan" ||
+      text === "investigate" ||
       text.includes("saved investigations")
     );
   });
@@ -63,14 +65,53 @@ function ensureUnlockHost() {
   }
 }
 
+function ensureDiscoveryButton(container: Element | null) {
+  if (!container) return;
+  if (container.querySelector("[data-prism-discover-nav='true']")) return;
+
+  const first = container.querySelector<HTMLButtonElement>("button");
+  if (!first?.parentElement) return;
+
+  const button = document.createElement("button");
+  button.type = "button";
+  button.dataset.prismDiscoverNav = "true";
+  button.className = first.className;
+  button.setAttribute("aria-label", "Discover market movers");
+
+  const badge = document.createElement("span");
+  const firstBadge = first.querySelector("span");
+  badge.className = firstBadge?.className ?? "";
+  badge.textContent = "01";
+
+  const label = document.createTextNode(" Discover ");
+  button.appendChild(badge);
+  button.appendChild(label);
+
+  button.addEventListener("click", () => {
+    document.getElementById("discover")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+
+  first.parentElement.insertBefore(button, first);
+}
+
 function reorderNav(container: Element | null) {
   if (!container) return;
 
+  ensureDiscoveryButton(container);
+
   const buttons = Array.from(container.querySelectorAll<HTMLButtonElement>("button"));
+
+  const scanButton = buttons.find((button) => {
+    if (button.dataset.prismDiscoverNav === "true") return false;
+    const text = button.textContent?.replace(/\s+/g, " ").trim().toLowerCase() ?? "";
+    return text.includes("scan") || text.endsWith(" investigate");
+  });
+
+  if (scanButton) replaceButtonLabel(scanButton, "Investigate");
 
   const unlockButton = buttons.find((button) => {
     const text = button.textContent?.replace(/\s+/g, " ").trim().toLowerCase() ?? "";
-    return text.includes("perspective") || text.includes("unlocks") || text === "03 view";
+    return text.includes("perspective") || text.includes("unlocks") || text.includes(" view");
   });
 
   const watchlistButton = buttons.find((button) =>
@@ -122,7 +163,7 @@ function cleanPerspectiveUI() {
       return;
     }
 
-    if (text.includes("perspective") || text === "03 view" || text === "view") {
+    if (text.includes("perspective") || text.includes(" view")) {
       replaceButtonLabel(button, "Unlocks");
     }
   });
