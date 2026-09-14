@@ -5,6 +5,7 @@ import UnlockIntelligenceConsole from "@/components/UnlockIntelligenceConsole";
 import MarketMoversConsole from "@/components/MarketMoversConsole";
 import MarketMoverInvestigationBridge from "@/components/MarketMoverInvestigationBridge";
 import InvestigationStoryConsole from "@/components/InvestigationStoryConsole";
+import InvestigationReportVisibility from "@/components/InvestigationReportVisibility";
 import RemovePerspectiveUI from "@/components/RemovePerspectiveUI";
 import "./globals.css";
 import "./theme.css";
@@ -50,6 +51,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <MarketMoversConsole />
         <MarketMoverInvestigationBridge />
         <InvestigationStoryConsole />
+        <InvestigationReportVisibility />
         <UnlockIntelligenceConsole />
         <RemovePerspectiveUI />
         <ThemeToggle />
