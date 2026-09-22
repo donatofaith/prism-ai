@@ -15,12 +15,12 @@ Crypto research is fragmented across price terminals, block explorers, token-unl
 PRISM starts with a token, symbol, name, contract, or public account and builds a structured investigation:
 
 1. Resolve the asset and load current market evidence.
-2. review its market structure and price history.
-3. compare the current move with similar historical windows.
-4. surface publicly attributable project accounts.
-5. inspect recent EVM or Solana activity.
-6. check scheduled unlock evidence and supply context.
-7. produce a perspective that separates observations from unsupported conclusions.
+2. Review its market structure and price history.
+3. Compare the current move with similar historical windows.
+4. Surface publicly attributable project accounts.
+5. Inspect recent EVM or Solana activity.
+6. Check scheduled unlock evidence and supply context.
+7. Produce a perspective that separates observations from unsupported conclusions.
 
 PRISM is a research tool—not a trading signal.
 
