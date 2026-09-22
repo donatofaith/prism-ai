@@ -6,6 +6,20 @@ PRISM connects live market context, historical pattern replay, token unlock evid
 
 [Live demo](https://prism-ai-gules.vercel.app) · [Architecture](docs/ARCHITECTURE.md) · [Security notes](SECURITY.md)
 
+## Product preview
+
+### Discover live market movement
+
+![PRISM Market Movers](docs/images/prism-market-movers.png)
+
+### Investigate public account activity
+
+![PRISM Account Intelligence](docs/images/prism-account-intelligence.png)
+
+### Compare the current move with historical periods
+
+![PRISM Replay](docs/images/prism-replay.png)
+
 ## The problem
 
 Crypto research is fragmented across price terminals, block explorers, token-unlock calendars, and wallet tools. That makes it easy to confuse correlation with proof, treat unknown wallets as verified entities, or present historical similarity as a prediction.
