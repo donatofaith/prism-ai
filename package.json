@@ -2,6 +2,7 @@
   "name": "prism-ai",
   "version": "0.1.0",
   "private": true,
+  "author": "Faith Oluwalana",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
