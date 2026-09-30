@@ -30,18 +30,14 @@ type CoinGeckoContractCoin = {
     large?: string | null;
   };
   market_data?: {
-    current_price?: {
-      usd?: number | null;
-    };
-    market_cap?: {
-      usd?: number | null;
-    };
-    total_volume?: {
-      usd?: number | null;
-    };
+    current_price?: { usd?: number | null };
+    market_cap?: { usd?: number | null };
+    total_volume?: { usd?: number | null };
     price_change_percentage_24h?: number | null;
   };
 };
+
+type CoinGeckoDetail = CoinGeckoContractCoin;
 
 type ContractPlatform = {
   id: string;
@@ -50,47 +46,50 @@ type ContractPlatform = {
 };
 
 const CONTRACT_PLATFORMS: ContractPlatform[] = [
-  {
-    id: "ethereum",
-    label: "Ethereum",
-    addressType: "evm",
-  },
-  {
-    id: "arbitrum-one",
-    label: "Arbitrum",
-    addressType: "evm",
-  },
-  {
-    id: "base",
-    label: "Base",
-    addressType: "evm",
-  },
-  {
-    id: "optimistic-ethereum",
-    label: "Optimism",
-    addressType: "evm",
-  },
-  {
-    id: "polygon-pos",
-    label: "Polygon",
-    addressType: "evm",
-  },
-  {
-    id: "binance-smart-chain",
-    label: "BNB Smart Chain",
-    addressType: "evm",
-  },
-  {
-    id: "avalanche",
-    label: "Avalanche",
-    addressType: "evm",
-  },
-  {
-    id: "solana",
-    label: "Solana",
-    addressType: "solana",
-  },
+  { id: "ethereum", label: "Ethereum", addressType: "evm" },
+  { id: "arbitrum-one", label: "Arbitrum", addressType: "evm" },
+  { id: "base", label: "Base", addressType: "evm" },
+  { id: "optimistic-ethereum", label: "Optimism", addressType: "evm" },
+  { id: "polygon-pos", label: "Polygon", addressType: "evm" },
+  { id: "binance-smart-chain", label: "BNB Smart Chain", addressType: "evm" },
+  { id: "avalanche", label: "Avalanche", addressType: "evm" },
+  { id: "solana", label: "Solana", addressType: "solana" },
 ];
+
+// These aliases bypass CoinGecko's search endpoint for common PRISM assets.
+// This makes symbol lookup more reliable when the provider's search endpoint is
+// temporarily rate-limited while keeping the canonical CoinGecko id intact.
+const KNOWN_COIN_IDS: Record<string, string> = {
+  BTC: "bitcoin",
+  BITCOIN: "bitcoin",
+  ETH: "ethereum",
+  ETHEREUM: "ethereum",
+  SOL: "solana",
+  SOLANA: "solana",
+  CYS: "cysic",
+  CYSIC: "cysic",
+  ENS: "ethereum-name-service",
+  AAVE: "aave",
+  UNI: "uniswap",
+  UNISWAP: "uniswap",
+  ARB: "arbitrum",
+  ARBITRUM: "arbitrum",
+  OP: "optimism",
+  OPTIMISM: "optimism",
+  LDO: "lido-dao",
+  LIDO: "lido-dao",
+  COMP: "compound-governance-token",
+  COMPOUND: "compound-governance-token",
+  SUSHI: "sushi",
+  SUSHISWAP: "sushi",
+  POL: "polygon-ecosystem-token",
+  MATIC: "polygon-ecosystem-token",
+  POLYGON: "polygon-ecosystem-token",
+  CVX: "convex-finance",
+  CONVEX: "convex-finance",
+  FXS: "frax-share",
+  FRAX: "frax-share",
+};
 
 function isEvmContractAddress(value: string) {
   return /^0x[a-fA-F0-9]{40}$/.test(value);
@@ -100,37 +99,46 @@ function isLikelySolanaAddress(value: string) {
   return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(value);
 }
 
+function coingeckoHeaders() {
+  const headers: Record<string, string> = {
+    Accept: "application/json",
+    "User-Agent": "PRISM-Crypto-Intelligence/1.0",
+  };
+
+  const demoKey = process.env.COINGECKO_DEMO_API_KEY;
+  if (demoKey) headers["x-cg-demo-api-key"] = demoKey;
+
+  return headers;
+}
+
+async function fetchCoinGecko(url: string, revalidate?: number) {
+  try {
+    return await fetch(url, {
+      headers: coingeckoHeaders(),
+      ...(revalidate
+        ? { next: { revalidate } }
+        : { cache: "no-store" as const }),
+      signal: AbortSignal.timeout(9000),
+    });
+  } catch {
+    return null;
+  }
+}
+
 async function fetchContractCoin(
   platform: ContractPlatform,
   contractAddress: string
 ) {
-  const response = await fetch(
+  const response = await fetchCoinGecko(
     `https://api.coingecko.com/api/v3/coins/${encodeURIComponent(
       platform.id
-    )}/contract/${encodeURIComponent(contractAddress)}`,
-    {
-      headers: {
-        Accept: "application/json",
-      },
-      cache: "no-store",
-    }
+    )}/contract/${encodeURIComponent(contractAddress)}`
   );
 
-  if (response.status === 404) {
-    return null;
-  }
-
-  if (!response.ok) {
-    return null;
-  }
+  if (!response || !response.ok) return null;
 
   const coin = (await response.json()) as CoinGeckoContractCoin;
-
-  if (!coin?.id) {
-    return null;
-  }
-
-  return coin;
+  return coin?.id ? coin : null;
 }
 
 async function resolveByContractAddress(query: string) {
@@ -140,9 +148,7 @@ async function resolveByContractAddress(query: string) {
     ? "solana"
     : null;
 
-  if (!addressType) {
-    return null;
-  }
+  if (!addressType) return null;
 
   const platforms = CONTRACT_PLATFORMS.filter(
     (platform) => platform.addressType === addressType
@@ -150,42 +156,68 @@ async function resolveByContractAddress(query: string) {
 
   for (const platform of platforms) {
     const coin = await fetchContractCoin(platform, query);
-
-    if (!coin) {
-      continue;
-    }
-
-    return {
-      coin,
-      platform,
-    };
+    if (coin) return { coin, platform };
   }
 
   return null;
 }
 
+function marketFromDetail(detail: CoinGeckoDetail): CoinGeckoMarket | null {
+  const price = detail.market_data?.current_price?.usd;
+  if (typeof price !== "number" || !Number.isFinite(price)) return null;
+
+  return {
+    id: detail.id,
+    symbol: detail.symbol,
+    name: detail.name,
+    image:
+      detail.image?.large ?? detail.image?.small ?? detail.image?.thumb ?? "",
+    current_price: price,
+    market_cap: detail.market_data?.market_cap?.usd ?? 0,
+    total_volume: detail.market_data?.total_volume?.usd ?? 0,
+    price_change_percentage_24h:
+      detail.market_data?.price_change_percentage_24h ?? 0,
+  };
+}
+
 async function fetchMarketData(coinId: string) {
-  const marketResponse = await fetch(
+  const marketUrl =
     `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${encodeURIComponent(
       coinId
-    )}&price_change_percentage=24h`,
-    {
-      headers: {
-        Accept: "application/json",
-      },
-      next: {
-        revalidate: 30,
-      },
-    }
-  );
+    )}&price_change_percentage=24h`;
 
-  if (!marketResponse.ok) {
-    return null;
+  const marketResponse = await fetchCoinGecko(marketUrl, 30);
+
+  if (marketResponse?.ok) {
+    const marketData = (await marketResponse.json()) as CoinGeckoMarket[];
+    if (marketData[0]) return marketData[0];
   }
 
-  const marketData: CoinGeckoMarket[] = await marketResponse.json();
+  // Secondary CoinGecko endpoint. This prevents a temporary failure on
+  // /coins/markets from breaking the entire investigation flow.
+  const detailResponse = await fetchCoinGecko(
+    `https://api.coingecko.com/api/v3/coins/${encodeURIComponent(
+      coinId
+    )}?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false&sparkline=false`,
+    30
+  );
 
-  return marketData[0] ?? null;
+  if (!detailResponse?.ok) return null;
+
+  const detail = (await detailResponse.json()) as CoinGeckoDetail;
+  return detail?.id ? marketFromDetail(detail) : null;
+}
+
+async function searchCoinGecko(query: string) {
+  const response = await fetchCoinGecko(
+    `https://api.coingecko.com/api/v3/search?query=${encodeURIComponent(query)}`,
+    60
+  );
+
+  if (!response?.ok) return null;
+
+  const data = (await response.json()) as { coins?: SearchCoin[] };
+  return data.coins ?? [];
 }
 
 export async function GET(request: NextRequest) {
@@ -225,18 +257,14 @@ export async function GET(request: NextRequest) {
 
       const price =
         market?.current_price ?? coin.market_data?.current_price?.usd ?? 0;
-
       const marketCap =
         market?.market_cap ?? coin.market_data?.market_cap?.usd ?? 0;
-
       const volume24h =
         market?.total_volume ?? coin.market_data?.total_volume?.usd ?? 0;
-
       const change24h =
         market?.price_change_percentage_24h ??
         coin.market_data?.price_change_percentage_24h ??
         0;
-
       const image =
         market?.image ??
         coin.image?.large ??
@@ -262,80 +290,77 @@ export async function GET(request: NextRequest) {
     }
 
     const normalizedQuery = query.toLowerCase();
+    const knownCoinId = KNOWN_COIN_IDS[query.toUpperCase()];
 
-    const searchResponse = await fetch(
-      `https://api.coingecko.com/api/v3/search?query=${encodeURIComponent(
-        query
-      )}`,
-      {
-        headers: {
-          Accept: "application/json",
-        },
-        next: {
-          revalidate: 60,
-        },
+    let selectedCoin: SearchCoin | null = null;
+    let inputType: "symbol" | "name" | "id" | "search" = "search";
+
+    if (knownCoinId) {
+      selectedCoin = {
+        id: knownCoinId,
+        name: query,
+        symbol: query,
+      };
+      inputType = "symbol";
+    } else {
+      const coins = await searchCoinGecko(query);
+
+      if (coins === null) {
+        return NextResponse.json(
+          {
+            error:
+              "PRISM's market-data provider is temporarily unavailable. Please retry in a moment.",
+          },
+          { status: 502 }
+        );
       }
-    );
 
-    if (!searchResponse.ok) {
-      return NextResponse.json(
-        { error: "Market data provider is currently unavailable." },
-        { status: 502 }
+      if (coins.length === 0) {
+        return NextResponse.json(
+          { error: `No token found for "${query}".` },
+          { status: 404 }
+        );
+      }
+
+      const exactIdMatch = coins.find(
+        (coin) => coin.id.toLowerCase() === normalizedQuery
       );
-    }
-
-    const searchData = await searchResponse.json();
-    const coins: SearchCoin[] = searchData.coins ?? [];
-
-    if (coins.length === 0) {
-      return NextResponse.json(
-        { error: `No token found for "${query}".` },
-        { status: 404 }
+      const exactNameMatch = coins.find(
+        (coin) => coin.name.toLowerCase() === normalizedQuery
       );
+      const exactSymbolMatches = coins
+        .filter((coin) => coin.symbol.toLowerCase() === normalizedQuery)
+        .sort((a, b) => coinRank(a) - coinRank(b));
+      const rankedCoins = [...coins].sort((a, b) => coinRank(a) - coinRank(b));
+
+      selectedCoin =
+        exactIdMatch ??
+        exactNameMatch ??
+        exactSymbolMatches[0] ??
+        rankedCoins[0] ??
+        coins[0];
+
+      inputType =
+        exactSymbolMatches[0]?.id === selectedCoin.id
+          ? "symbol"
+          : exactNameMatch?.id === selectedCoin.id
+          ? "name"
+          : exactIdMatch?.id === selectedCoin.id
+          ? "id"
+          : "search";
     }
-
-    const exactIdMatch = coins.find(
-      (coin) => coin.id.toLowerCase() === normalizedQuery
-    );
-
-    const exactNameMatch = coins.find(
-      (coin) => coin.name.toLowerCase() === normalizedQuery
-    );
-
-    const exactSymbolMatches = coins
-      .filter((coin) => coin.symbol.toLowerCase() === normalizedQuery)
-      .sort((a, b) => {
-        const rankA = coinRank(a);
-        const rankB = coinRank(b);
-        return rankA - rankB;
-      });
-
-    const rankedCoins = [...coins].sort((a, b) => coinRank(a) - coinRank(b));
-
-    const selectedCoin =
-      exactIdMatch ??
-      exactNameMatch ??
-      exactSymbolMatches[0] ??
-      rankedCoins[0] ??
-      coins[0];
 
     const coin = await fetchMarketData(selectedCoin.id);
 
     if (!coin) {
       return NextResponse.json(
-        { error: "No market data is available for this token." },
-        { status: 404 }
+        {
+          error:
+            "PRISM found the token, but live market data is temporarily unavailable. Please retry shortly.",
+        },
+        { status: 502 }
       );
     }
-
-    const inputType =
-      exactSymbolMatches[0]?.id === selectedCoin.id
-        ? "symbol"
-        : exactNameMatch?.id === selectedCoin.id
-        ? "name"
-        : exactIdMatch?.id === selectedCoin.id
-        ? "id"
-        : "search";
 
     return NextResponse.json({
       id: coin.id,
