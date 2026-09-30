@@ -2,8 +2,6 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import ThemeToggle from "@/components/ThemeToggle";
 import UnlockIntelligenceConsole from "@/components/UnlockIntelligenceConsole";
-import MarketMoversConsole from "@/components/MarketMoversConsole";
-import MarketMoverInvestigationBridge from "@/components/MarketMoverInvestigationBridge";
 import InvestigationStoryConsole from "@/components/InvestigationStoryConsole";
 import InvestigationReportVisibility from "@/components/InvestigationReportVisibility";
 import RemovePerspectiveUI from "@/components/RemovePerspectiveUI";
@@ -48,8 +46,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       </head>
       <body className="min-h-full flex flex-col">
         {children}
-        <MarketMoversConsole />
-        <MarketMoverInvestigationBridge />
         <InvestigationStoryConsole />
         <InvestigationReportVisibility />
         <UnlockIntelligenceConsole />
